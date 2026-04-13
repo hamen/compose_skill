@@ -46,6 +46,10 @@ Symlink the repo into your skills directory so `git pull` updates everywhere at 
 mkdir -p ~/.claude/skills
 ln -s "$(pwd)" ~/.claude/skills/jetpack-compose-audit
 
+# Codex
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)" ~/.codex/skills/jetpack-compose-audit
+
 # Cursor
 mkdir -p ~/.cursor/skills
 ln -s "$(pwd)" ~/.cursor/skills/jetpack-compose-audit
