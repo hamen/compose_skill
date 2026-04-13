@@ -11,7 +11,25 @@ Use these default weights for Android Jetpack Compose app repositories:
 | Side effects | 20% |
 | Composable API quality | 20% |
 
-If a category is truly `N/A`, remove it and renormalize the remaining weights.
+Performance carries the heaviest weight in v1 because Compose performance issues are the most common reason teams audit a codebase, and the smells are the most measurable from source alone. For state-heavy apps with little perf-sensitive UI (forms, dashboards, settings), a 30/30/20/20 split is reasonable — apply judgment and document the choice in the report's "Notes And Limits" section.
+
+### N/A vs Low Confidence
+
+Mark a category `N/A` only when its surface area is structurally absent — for example, scoring API quality on a repo with zero shared/reusable components. If the surface area is merely thin, score it with `Low` confidence instead of dropping it. `N/A` should be rare.
+
+### Renormalization
+
+If a category is `N/A`, renormalize the remaining weights so they still sum to 1.0:
+
+`weight_i_new = weight_i / sum(remaining_weights)`
+
+Worked example — Composable API quality is `N/A`, so the remaining weights are Performance (35%), State (25%), Side effects (20%), summing to 80%:
+
+- Performance: `0.35 / 0.80 = 0.4375` → 44%
+- State: `0.25 / 0.80 = 0.3125` → 31%
+- Side effects: `0.20 / 0.80 = 0.2500` → 25%
+
+State the renormalization in the report.
 
 ## Score Bands
 
@@ -47,25 +65,40 @@ Low confidence does not block scoring, but it must be stated clearly.
 
 ## Category Rubric
 
+Each rule below carries an inline citation. **Every deduction in the report must reference the same citation** so readers can verify against the official source.
+
 ### Performance
 
 Reward:
 
-- expensive calculations cached with `remember` or moved out of composition
-- stable keys in lazy layouts where list identity matters
-- good use of `derivedStateOf` for fast-changing state
-- deferred reads and lambda modifiers for frequently changing values
-- absence of obvious backwards writes
-- evidence of performance-aware configuration such as baseline profiles or release-minded setup when relevant
+- expensive calculations cached with `remember(keys)` or moved out of composition → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- stable `key =` in lazy layouts where list identity matters → [docs](https://developer.android.com/develop/ui/compose/lists)
+- `contentType` on heterogeneous lazy lists, so Compose can reuse compositions only between items of the same type → [docs](https://developer.android.com/develop/ui/compose/lists)
+- `derivedStateOf` used for state that changes faster than its observable output (e.g. scroll position → "show button" boolean) → [docs](https://developer.android.com/develop/ui/compose/side-effects)
+- deferred reads via lambda modifiers (`Modifier.offset { … }`, `Modifier.graphicsLayer { … }`, `Modifier.drawBehind { … }`) → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices), [phases](https://developer.android.com/develop/ui/compose/performance/phases)
+- absence of backwards writes (writing to state that has already been read in the same composition) → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- stability hygiene: `@Stable` / `@Immutable` on data classes used as composable params → [docs](https://developer.android.com/develop/ui/compose/performance/stability)
+- `kotlinx.collections.immutable` (`ImmutableList`, `PersistentList`) for collection params → [stability](https://developer.android.com/develop/ui/compose/performance/stability), [fix](https://developer.android.com/develop/ui/compose/performance/stability/fix)
+- `compose_compiler_config.conf` used to mark third-party types stable → [fix](https://developer.android.com/develop/ui/compose/performance/stability/fix)
+- typed state factories (`mutableIntStateOf`, `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`) for primitives instead of boxed `mutableStateOf<Int>` → [state](https://developer.android.com/develop/ui/compose/state)
+- `@ReadOnlyComposable` / `@NonRestartableComposable` used deliberately on hot-path helpers → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
+- evidence of Strong Skipping Mode awareness (Kotlin 2.0.20+ / Compose Compiler 1.5.4+); opt-outs (`@NonSkippableComposable`, `@DontMemoize`) used only with justification → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
+- evidence of performance-aware configuration such as baseline profiles, R8 / minify enabled in release, or `ProfileInstaller` setup → [baseline profiles](https://developer.android.com/develop/ui/compose/performance/baseline-profiles)
+- evidence the team uses Compose Compiler reports / metrics to verify skippability → [tooling](https://developer.android.com/develop/ui/compose/performance/tooling), [diagnose](https://developer.android.com/develop/ui/compose/performance/stability/diagnose)
 
 Deduct for:
 
-- collection transforms or expensive computation inside composable bodies without caching
-- lazy list items without stable keys when identity/moves matter
-- reading rapidly changing state too high in the tree
-- frequent-state modifiers that force composition when layout or draw would suffice
-- backwards writes or other patterns that can trigger runaway recomposition
-- repeated broad recomposition smells across screens/components
+- collection transforms or expensive computation inside composable bodies without caching → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- lazy list items without stable keys when identity/moves matter → [lists](https://developer.android.com/develop/ui/compose/lists)
+- heterogeneous lazy lists missing `contentType` → [lists](https://developer.android.com/develop/ui/compose/lists)
+- reading rapidly changing state too high in the tree → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- frequent-state values passed to non-lambda modifiers when a layout/draw-phase alternative exists → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- backwards writes — writing to state already read in the same composition body → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- repeated broad recomposition smells across screens/components → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
+- raw `List`/`Map`/`Set` parameters on widely reused composables when the rest of the codebase has the immutable-collections dependency available → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
+- `mutableStateOf<Int|Long|Float|Double>` where the typed factory exists (autoboxing) → [state](https://developer.android.com/develop/ui/compose/state)
+- `@NonSkippableComposable` / `@DontMemoize` opt-outs without a justifying comment → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
+- if the project is on a Compose Compiler track older than 1.5.4 / Kotlin 2.0.20, stability matters more than the rules above assume — note this in the report and weight unstable-param findings more heavily → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
 
 Suggested interpretation:
 
@@ -78,24 +111,33 @@ Suggested interpretation:
 
 Reward:
 
-- clear single source of truth
-- correct hoisting to the lowest common reader / highest writer
-- related state hoisted together when driven by the same events
-- stateless reusable composables with stateful wrappers where useful
-- `rememberSaveable` for UI state that should survive recreation
-- `collectAsStateWithLifecycle()` in Android UI code
-- observable immutable state instead of mutable non-observable containers
-- use of plain state-holder classes when screen logic grows
+- clear single source of truth → [architecture](https://developer.android.com/develop/ui/compose/architecture)
+- correct hoisting to the lowest common reader / highest writer → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- related state hoisted together when driven by the same events → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- stateless reusable composables with stateful wrappers where useful → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- `rememberSaveable` for UI state that should survive recreation → [state](https://developer.android.com/develop/ui/compose/state)
+- custom `Saver` / `mapSaver` / `listSaver` / `@Parcelize` for non-bundleable types in `rememberSaveable` → [state](https://developer.android.com/develop/ui/compose/state)
+- `collectAsStateWithLifecycle()` in Android UI code → [state](https://developer.android.com/develop/ui/compose/state)
+- observable immutable state instead of mutable non-observable containers → [state](https://developer.android.com/develop/ui/compose/state)
+- correct observable collections via `mutableStateListOf` / `mutableStateMapOf` instead of wrapping `mutableListOf`/`mutableMapOf` in a `MutableState` → [state](https://developer.android.com/develop/ui/compose/state)
+- typed state factories (`mutableIntStateOf` and friends) — cross-listed with Performance because the failure mode is autoboxing → [state](https://developer.android.com/develop/ui/compose/state)
+- plain state-holder classes when screen logic grows; idiomatic shape is `@Stable class FooState(...)` paired with a `@Composable fun rememberFooState(...): FooState` factory → [architecture](https://developer.android.com/develop/ui/compose/architecture)
+- ViewModel used as the source of truth for screen-level state, scoped at the screen level (not deep in the tree, not inside reusable components) → [architecture](https://developer.android.com/develop/ui/compose/architecture), [state](https://developer.android.com/develop/ui/compose/state)
+- `remember(key)` invalidation when cached values depend on inputs → [state](https://developer.android.com/develop/ui/compose/state)
 
 Deduct for:
 
-- duplicated or split ownership of state
-- under-hoisted shared state
-- reusable components with unnecessary internal state
-- misuse of `remember` where `rememberSaveable` is more appropriate
-- non-observable mutable collections or mutable data holders used as state
-- Android flows collected in UI without lifecycle awareness when the code is Android-specific
-- state scattered across multiple sibling composables without a clear owner
+- duplicated or split ownership of state → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- under-hoisted shared state → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- reusable components with unnecessary internal state → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- misuse of `remember` where `rememberSaveable` is more appropriate → [state](https://developer.android.com/develop/ui/compose/state)
+- non-observable mutable collections or mutable data holders used as state (`mutableListOf` held in a `var`, `ArrayList` mutated in place) → [state](https://developer.android.com/develop/ui/compose/state)
+- `mutableListOf` / `mutableMapOf` wrapped in a `MutableState` where `mutableStateListOf` / `mutableStateMapOf` would correctly observe element changes → [state](https://developer.android.com/develop/ui/compose/state)
+- Android flows collected in UI without lifecycle awareness when the code is Android-specific (skip on Compose Multiplatform code paths) → [state](https://developer.android.com/develop/ui/compose/state)
+- state scattered across multiple sibling composables without a clear owner → [state hoisting](https://developer.android.com/develop/ui/compose/state-hoisting)
+- `remember { computeFromInput(x) }` with no `key` — stale cached value when `x` changes → [state](https://developer.android.com/develop/ui/compose/state)
+- `viewModel()` invoked deep in a composable tree (rather than at the screen entry point) or ViewModels passed via `CompositionLocal` → [architecture](https://developer.android.com/develop/ui/compose/architecture), [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
+- `rememberSaveable { mutableStateOf(SomeNonBundleable(...)) }` without a `Saver` — restoration silently fails after process death → [state](https://developer.android.com/develop/ui/compose/state)
 
 Suggested interpretation:
 
@@ -106,22 +148,32 @@ Suggested interpretation:
 
 ### Side Effects
 
+All citations in this category point to the canonical [Side-effects in Compose](https://developer.android.com/develop/ui/compose/side-effects) page unless noted. The official docs put `derivedStateOf` and `snapshotFlow` under side-effects. v1 keeps `derivedStateOf` weighted under Performance because that's where its value most often lands in audits, but the side-effects category also looks at it for *misuse*. Pick the dominant category and cross-reference rather than double-counting.
+
 Reward:
 
-- side-effect-free composition
-- correct use of `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `rememberUpdatedState`, and `produceState`
-- effects keyed to the right lifecycle inputs
-- cleanup for listeners, observers, and subscriptions
-- stale callback capture avoided with `rememberUpdatedState` when needed
+- side-effect-free composition → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- correct use of `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `rememberUpdatedState`, and `produceState` → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- effects keyed to the right lifecycle inputs → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- cleanup for listeners, observers, and subscriptions → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- stale callback capture avoided with `rememberUpdatedState` when needed → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `snapshotFlow { … }` collected from inside a `LaunchedEffect` for Compose-state → Flow conversions → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `rememberCoroutineScope()` used only for event-driven work (button taps, gesture handlers); long-lived/keyed work lives in `LaunchedEffect` → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- navigation, snackbar, analytics, and repository calls live in event handlers or `LaunchedEffect`, never in the composition body → [side-effects](https://developer.android.com/develop/ui/compose/side-effects), [navigation](https://developer.android.com/develop/ui/compose/navigation)
 
 Deduct for:
 
-- launching threads, coroutines, navigation, or external work directly in composition
-- wrong effect API choice
-- incorrect or missing effect keys
-- stale captures in long-lived effects
-- empty or suspicious `onDispose`
-- listeners or observers registered without cleanup
+- launching threads, coroutines, navigation, or external work directly in composition → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- wrong effect API choice → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- incorrect or missing effect keys → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- stale captures in long-lived effects → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- empty or suspicious `onDispose` → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- listeners or observers registered without cleanup → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `snapshotFlow { … }` invoked outside an effect, or used to compute values that `derivedStateOf` would handle more cheaply → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `rememberCoroutineScope()` used to launch work that should live in a keyed `LaunchedEffect` (manual cancellation, lifecycle handling reinvented) → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `derivedStateOf { a + b }`-style misuse where inputs change as often as outputs — pure overhead per the official guidance → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `LaunchedEffect(Unit)` / `LaunchedEffect(true)` flagged only when the body captures parameter or state values that may change without being keyed or wrapped in `rememberUpdatedState`. The "run once on enter" pattern itself is idiomatic; do not deduct for it → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `navController.navigate(...)` invoked from the composition body instead of an event handler or effect → [navigation](https://developer.android.com/develop/ui/compose/navigation)
 
 Suggested interpretation:
 
@@ -132,27 +184,39 @@ Suggested interpretation:
 
 ### Composable API Quality
 
-This category is lighter-touch for app repositories. Focus on shared internal components, UI kits, and reusable building blocks.
+This category is lighter-touch for app repositories. Focus on shared internal components, UI kits, and reusable building blocks. The two authoritative sources are the [Compose API guidelines](https://developer.android.com/develop/ui/compose/api-guidelines) and the deeper [Component API guidelines](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md).
 
 Reward:
 
-- reusable components expose `modifier: Modifier = Modifier`
-- `modifier` is the first optional parameter and applied once to the root-most UI node
-- parameter order is sensible: required, `modifier`, optional, trailing content lambda
-- defaults are meaningful and not hidden behind nullable sentinel behavior
-- explicit parameters are preferred over component-specific `CompositionLocal` indirection
-- components are focused and layered instead of multipurpose grab-bags
-- reusable APIs avoid `MutableState<T>` params when a stateless or state-holder API would be better
+- reusable components expose `modifier: Modifier = Modifier` → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- `modifier` is the first optional parameter and applied once as the first link in the chain on the root-most UI node → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- parameter order is sensible: required, `modifier`, optional, trailing content lambda → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- defaults are meaningful and not hidden behind nullable sentinel behavior; defaults exposed through a `ComponentDefaults` object → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- explicit parameters preferred over component-specific `CompositionLocal` indirection. `CompositionLocal` is appropriate for *tree-scoped* data with sensible defaults (theme tokens like `LocalContentColor`, `LocalTextStyle`); not appropriate for component-specific configuration → [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal), [api-guidelines](https://developer.android.com/develop/ui/compose/api-guidelines)
+- components are focused and layered instead of multipurpose grab-bags → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- slot APIs (`content: @Composable RowScope.() -> Unit`) used for flexible composition; receiver scopes (`RowScope`, `ColumnScope`, `BoxScope`) applied where they guide layout → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- `Basic*` naming for unstyled / minimal variants alongside the opinionated public version (e.g. `BasicTextField` ↔ `TextField`) → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- distinct components for visual variants (`ContainedButton`, `OutlinedButton`, `TextButton`) instead of a single component with a `style` enum → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- `@Composable` functions are PascalCase and Unit-returning where they emit UI → [api-guidelines](https://developer.android.com/develop/ui/compose/api-guidelines)
+- custom modifiers built with `Modifier.Node` rather than the discouraged `composed { }` factory → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
+- `movableContentOf` / `movableContentWithReceiverOf` used to preserve slot-content lifecycle when content moves between containers → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- reusable APIs prefer `value: T` (immediate read) or `value: () -> T` (deferred read) plus `onValueChange: (T) -> Unit` over `MutableState<T>` parameters → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
 
 Deduct for:
 
-- shared components missing `modifier`
-- multiple modifier params or modifier applied to the wrong child
-- `modifier` with a non-no-op default like padding
-- parameter ordering that makes APIs awkward or misleading
-- nullable params used only as "use internal default" signals
-- `MutableState<T>` or `State<T>` params in reusable APIs when avoidable
-- giant multipurpose components that should be split or wrapped
+- shared components missing `modifier` → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- multiple modifier params or modifier applied to the wrong child (anywhere other than the root-most emitted layout) → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- `modifier` with a non-no-op default like `Modifier.padding(8.dp)` (caller's modifier silently loses the padding) → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- parameter ordering that makes APIs awkward or misleading → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- nullable params used only as "use internal default" signals — expose the default explicitly via a `ComponentDefaults` object instead → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- `MutableState<T>` or `State<T>` params in reusable APIs when avoidable; the official replacement is `value: T` or `value: () -> T` plus `onValueChange: (T) -> Unit` → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- giant multipurpose components that should be split or wrapped → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- behavior added as parameters that should be modifiers (`onClick`, `clipToCircle`) → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- style/configuration objects passed to a single component instead of distinct components per variant → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- non-Compose lifecycles attached to composables — for example, an `onClick` callback on a layout component when `Modifier.clickable` would do → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- modifier ordering that quietly changes semantics in shared components (e.g. `Modifier.padding(...).clickable {}` extends the click region into the padding; `Modifier.clickable {}.padding(...)` does not). Flag when the choice looks accidental → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
+- `CompositionLocal` used for component-specific configuration (vs. truly tree-scoped data); ViewModels stored in `CompositionLocal`; locals with no sensible default → [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
+- custom modifiers built with `Modifier.composed { }` when `Modifier.Node` would do — `composed { }` is officially discouraged for performance → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
 
 Suggested interpretation:
 
@@ -168,3 +232,4 @@ Suggested interpretation:
 - Production code matters more than samples, previews, or scratch files.
 - Positive patterns should raise confidence and may offset minor issues.
 - App teams may intentionally deviate from framework/library guidance. Note the tradeoff before deducting heavily.
+- **Every deduction in the report must include a `References:` line citing one or more URLs from the rubric above (or from `references/canonical-sources.md`).** A deduction without a citation should not appear in the report.

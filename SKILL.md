@@ -1,13 +1,15 @@
 ---
 name: jetpack-compose-audit
 description: Audit Android Jetpack Compose repositories for performance, state management, side effects, and composable API quality. Scans source code, scores each category from 0-10, writes a strict markdown report, and summarizes the most important fixes. Use when reviewing a Compose codebase, rating repository quality, inspecting recomposition/state issues, or running a Compose audit.
-user-invokable: true
+allowed-tools: Read, Glob, Grep, Write, Bash, Agent
 argument-hint: "[repo path or module path]"
 ---
 
 # Jetpack Compose Audit
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
+
+**Rubric version:** v1 — current as of 2026-04-13. Compose track: Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default).
 
 It is intentionally focused on four categories:
 
@@ -16,7 +18,20 @@ It is intentionally focused on four categories:
 - Side effects
 - Composable API quality
 
-This skill does **not** score design or Material 3 compliance in v1. If the audit surfaces likely design-system problems, recommend a follow-up audit with [`material-3`](https://github.com/hamen/material-3-skill).
+This skill does **not** score design or Material 3 compliance in v1. If the audit surfaces likely design-system problems, recommend a follow-up audit with the `material-3` skill (reference implementation: <https://github.com/hamen/material-3-skill>).
+
+## Out Of Scope In v1
+
+Owned and deliberate scope choices — call out the limitation in the report rather than silently producing thin coverage:
+
+- Material 3 compliance, theming, color/typography tokens — defer to the `material-3` skill.
+- Accessibility scoring (`semantics`, content descriptions, touch-target sizing) — flag obvious gaps as a note, do not score.
+- UI test coverage and Compose test rule patterns — note presence/absence, do not score.
+- Compose Multiplatform-specific rules (`expect`/`actual`, target-specific code paths).
+- Wear OS / TV / Auto / Glance surfaces.
+- Build performance (incremental compilation, KSP/KAPT choice).
+
+If the user explicitly asks for any of these, narrow the scope and state it in the report.
 
 ## When To Use
 
@@ -48,6 +63,7 @@ Produce both:
 - Be strict, but evidence-based.
 - Do not score from search hits alone. Read representative files before judging a category.
 - Cite concrete file paths in the report for every important deduction.
+- **Cite an official documentation URL for every deduction.** No "trust me" findings — the rubric maps every rule to a canonical source in `references/canonical-sources.md`. The report template requires a `References:` line per finding.
 - Prefer canonical Android guidance over folklore.
 - Treat performance as important, but not as the only lens.
 - Do not punish app code for failing public-library purity tests. Apply API-quality checks mainly to reusable internal components, design-system pieces, and shared UI building blocks.
@@ -58,9 +74,20 @@ Produce both:
 
 ### 1. Confirm Scope
 
-Identify the target path. If the user gave a repository root, audit the relevant Compose modules inside it.
+Identify the target path:
 
-If the codebase is not an Android Jetpack Compose repository, stop and report that it is out of scope.
+- If the user passed an explicit path (`[repo path or module path]`), use it.
+- If no path was passed, default to the current working directory.
+- If the path does not exist, ask the user to clarify.
+
+Before mapping modules, confirm Compose is actually present (fast-fail):
+
+- grep for `androidx.compose` in any `build.gradle*` or `libs.versions.toml`
+- grep for `setContent {` or `@Composable` under `src/`
+
+If neither shows up, stop and report that the target is out of scope. Do not run a full module map first.
+
+If Compose is present *only* in `samples/`, `demos/`, or test sources (no production usage), narrow the scope to those directories, set confidence to `Low`, and state in the report that the audit is over sample code rather than production paths. Do not score production-quality categories against demo code.
 
 ### 2. Map The Repository
 
@@ -88,7 +115,7 @@ Look for:
 - `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `rememberUpdatedState`, `produceState`
 - `LazyColumn`, `LazyRow`, `items`, `itemsIndexed`
 
-If the repo is large, audit by category or by module. If subagents are available, parallelize category scans in readonly mode and merge the findings.
+If the repo is large, audit by category or by module. If subagents are available, parallelize category scans by spawning `Explore`-type subagents (no write tools) and merge the findings.
 
 ### 4. Audit The Four Categories
 
@@ -149,6 +176,7 @@ Before deducting points:
 - make sure the pattern is real, not a false positive
 - check whether the repo already has a compensating pattern elsewhere
 - distinguish one-off mistakes from systemic patterns
+- if a finding depends on stability inference (skippable / restartable / unstable params), generate or request the Compose Compiler reports before deducting — do not infer stability from the source alone
 
 ### 6. Score
 
@@ -179,7 +207,9 @@ The report must include:
 
 Write the report to:
 
-- `COMPOSE-AUDIT-REPORT.md`
+- `COMPOSE-AUDIT-REPORT.md` inside the audited target (the path the user passed), not the current working directory.
+
+If `COMPOSE-AUDIT-REPORT.md` already exists at that path, do not overwrite it silently. Either confirm overwrite with the user, or write to `COMPOSE-AUDIT-REPORT-<YYYY-MM-DD>.md` alongside it.
 
 ### 8. Return A Short Summary
 
@@ -213,10 +243,14 @@ For medium or large repositories:
 - Do not inflate the performance score just because the app uses Compose.
 - Do not over-penalize isolated experiments or sample files unless they are part of production paths.
 - Do not score design in v1.
+- Do not flag `LaunchedEffect(Unit)` or `LaunchedEffect(true)` on its own — the "run once" pattern is idiomatic. Only flag it when the body captures a value that may change without `rememberUpdatedState`.
+- Do not deduct on Compose Multiplatform code paths for Android-only APIs (`collectAsStateWithLifecycle`, `lifecycle-runtime-compose`). Note the platform constraint as a tradeoff instead.
+- Do not double-count the same root cause across categories. A stability problem typically surfaces in both Performance and State — pick the dominant category and cross-reference.
 
 ## References
 
-- `references/scoring.md`
-- `references/search-playbook.md`
-- `references/report-template.md`
-- `references/canonical-sources.md`
+- `references/scoring.md` — per-rule rubric with inline citations
+- `references/search-playbook.md` — search patterns and red-flag heuristics
+- `references/report-template.md` — required structure for `COMPOSE-AUDIT-REPORT.md`
+- `references/canonical-sources.md` — the official URLs every deduction must cite
+- `references/diagnostics.md` — copy-pasteable Gradle/code snippets for Compose Compiler reports, stability config, baseline profiles, and R8 checks
