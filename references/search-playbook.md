@@ -62,6 +62,9 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - deprecated/legacy APIs: `accompanist-pager`, `accompanist-swiperefresh`, `accompanist-flowlayout`, `accompanist-systemuicontroller`, `animateItemPlacement\(`
 - config-derived reads inside `remember {}`: `LocalConfiguration`, `LocalDensity`, `LocalLayoutDirection`
 - `\.indexOf\(|\.lastIndexOf\(|\.indexOfFirst\s*\{` inside lazy item factories
+- `Canvas\s*\(` and `Spacer\s*\(` — check each hit for an explicit `size` / `height` / `aspectRatio` on the modifier; bare `fillMaxSize()` on a drawing surface can enter draw with `Size.Zero`
+- `ReportDrawnWhen\s*\{` — positive signal for startup metrics
+- `enableEdgeToEdge\s*\(` — positive signal; also confirms the project is not reaching for the deprecated `accompanist-systemuicontroller`
 
 ### Red Flags To Verify
 
@@ -99,6 +102,22 @@ There's no clean single regex for this. Use a two-step approach:
 
 Manually verify before deducting — `items(count: Int)` overloads and small static lists that never reorder are not bugs.
 
+### Duplicate-Lazy-Key Heuristic
+
+Compose throws `IllegalArgumentException: Key ... was already used` when a `Lazy*` layout sees two items with the same key. Root causes in production code: backend returning duplicate IDs, merging streams (e.g. WebSocket reconnect), or `Pager` + `LazyColumn` combinations where the same item appears in overlapping pages.
+
+There is no clean regex. Walk `items(..., key = ...)` / `itemsIndexed(..., key = ...)` hits and read the surrounding context:
+
+- is the list source a merge / combine / concatenation of multiple flows?
+- does the backend spec guarantee ID uniqueness?
+- is the key computed from `hashCode()` on a non-`data class`?
+
+When uniqueness is not guaranteed, flag as a latent crash and suggest a dedup index or a synthesized key like `"${source}-${id}"`.
+
+### Scaffold Inner-Padding Heuristic
+
+`Scaffold` exposes `innerPadding` to its content lambda. If the content ignores it, elements are drawn behind the `TopAppBar` or `BottomAppBar`. Search for `Scaffold(` and read each hit — the content lambda parameter should be applied to the root-most child via `Modifier.padding(innerPadding)` (or `.consumeWindowInsets(innerPadding)`). If a `Scaffold { }` discards the padding parameter with `_ ->` or omits it entirely while nesting non-trivial content, flag it.
+
 ### Strong Skipping Mode Check
 
 Confirm the project's compiler version:
@@ -126,6 +145,10 @@ Confirm the project's compiler version:
 - `compositionLocalOf|staticCompositionLocalOf`
 - `ViewModel`
 - `viewModel\(` — log invocation depth (screen entry vs. deep tree)
+- `mutableStateOf` / `mutableIntStateOf` etc. declared as members of a class extending `ViewModel` (not inside a composable)
+- `Channel<` / `receiveAsFlow\(\)` / `consumeAsFlow\(\)` exposed from a `ViewModel` for UI events
+- `\.stateIn\s*\(` — positive signal; check for `WhileSubscribed(5_000)` or similar timeout
+- `rememberSaveable` invoked inside a `Lazy(Column|Row|VerticalGrid|HorizontalGrid|VerticalStaggeredGrid|HorizontalStaggeredGrid)` item factory
 
 ### Red Flags To Verify
 

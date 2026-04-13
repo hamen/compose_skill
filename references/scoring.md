@@ -84,6 +84,8 @@ Reward:
 - `@ReadOnlyComposable` / `@NonRestartableComposable` used deliberately on hot-path helpers → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
 - evidence of Strong Skipping Mode awareness (Kotlin 2.0.20+ / Compose Compiler 1.5.4+); opt-outs (`@NonSkippableComposable`, `@DontMemoize`) used only with justification → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
 - evidence of performance-aware configuration such as baseline profiles, R8 / minify enabled in release, or `ProfileInstaller` setup → [baseline profiles](https://developer.android.com/develop/ui/compose/performance/baseline-profiles)
+- `ReportDrawnWhen { ... }` used to signal first-meaningful-content for accurate TTID/TTFD metrics → [tooling](https://developer.android.com/develop/ui/compose/performance/tooling)
+- edge-to-edge opt-in via `enableEdgeToEdge()` (first-party) rather than `accompanist-systemuicontroller` on projects that support it → [lists](https://developer.android.com/develop/ui/compose/lists)
 - evidence the team uses Compose Compiler reports / metrics to verify skippability → [tooling](https://developer.android.com/develop/ui/compose/performance/tooling), [diagnose](https://developer.android.com/develop/ui/compose/performance/stability/diagnose)
 
 Deduct for:
@@ -103,6 +105,8 @@ Deduct for:
 - `indexOf()` / `lastIndexOf()` / `indexOfFirst { }` called inside a `LazyListScope` item factory — O(n²) scroll cost and crash risk when identity moves; use `itemsIndexed` instead → [lists](https://developer.android.com/develop/ui/compose/lists)
 - `animateItemPlacement()` on Compose 1.7+ — replaced by `Modifier.animateItem()` → [lists](https://developer.android.com/develop/ui/compose/lists)
 - Accompanist libraries where first-party replacements exist: `accompanist-pager` (→ `HorizontalPager`), `accompanist-swiperefresh` (→ `PullToRefreshBox`), `accompanist-flowlayout` (→ `FlowRow` / `FlowColumn`), `accompanist-systemuicontroller` (→ `enableEdgeToEdge()`) — deduct only when the replacement is available on the project's Compose version → [lists](https://developer.android.com/develop/ui/compose/lists)
+- `Canvas` / `Spacer` with only `Modifier.fillMaxSize()` and no explicit height or aspect ratio — may enter draw with `Size.Zero`, producing `NaN` math and Skia-pipeline crashes. Require `Modifier.size(...)`, `Modifier.height(...)`, or `Modifier.aspectRatio(...)` on drawing surfaces → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- lazy-list `key = { ... }` computed from a source that cannot guarantee uniqueness (merged flows, paginated streams, `hashCode()` on non-`data class`) — `IllegalArgumentException: Key ... was already used` crashes production. Verify with the duplicate-lazy-key heuristic in `search-playbook.md` → [lists](https://developer.android.com/develop/ui/compose/lists)
 
 Suggested interpretation:
 
@@ -147,6 +151,7 @@ Reward:
 - typed state factories (`mutableIntStateOf` and friends) — cross-listed with Performance because the failure mode is autoboxing → [state](https://developer.android.com/develop/ui/compose/state)
 - plain state-holder classes when screen logic grows; idiomatic shape is `@Stable class FooState(...)` paired with a `@Composable fun rememberFooState(...): FooState` factory → [architecture](https://developer.android.com/develop/ui/compose/architecture)
 - ViewModel used as the source of truth for screen-level state, scoped at the screen level (not deep in the tree, not inside reusable components) → [architecture](https://developer.android.com/develop/ui/compose/architecture), [state](https://developer.android.com/develop/ui/compose/state)
+- ViewModel-exposed flows converted with `.stateIn(scope, SharingStarted.WhileSubscribed(5_000), initial)` — survives configuration changes without restarting upstream work → [architecture](https://developer.android.com/develop/ui/compose/architecture)
 - `remember(key)` invalidation when cached values depend on inputs → [state](https://developer.android.com/develop/ui/compose/state)
 
 Deduct for:
@@ -163,6 +168,9 @@ Deduct for:
 - `viewModel()` invoked deep in a composable tree (rather than at the screen entry point) or ViewModels passed via `CompositionLocal` → [architecture](https://developer.android.com/develop/ui/compose/architecture), [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
 - `rememberSaveable { mutableStateOf(SomeNonBundleable(...)) }` without a `Saver` — restoration silently fails after process death → [state](https://developer.android.com/develop/ui/compose/state)
 - string-based navigation routes (`composable("home")`, `navigate("profile/$id")`) on Navigation Compose 2.8+ where type-safe `@Serializable` routes are available — loses compile-time checking and encourages argument-encoding bugs → [navigation](https://developer.android.com/develop/ui/compose/navigation)
+- `mutableStateOf` held in a `ViewModel` instead of `StateFlow` / `MutableStateFlow` — couples the ViewModel to the Compose runtime and hurts testability. App-level teams may accept this tradeoff deliberately; note the tradeoff rather than deducting heavily unless it is widespread → [architecture](https://developer.android.com/develop/ui/compose/architecture)
+- `Channel<UiEvent>` exposed as the one-shot event stream from a ViewModel without a buffered `SharedFlow` alternative — events silently drop when there is no active collector (configuration change, lifecycle transition). Prefer `MutableSharedFlow(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)` → [architecture](https://developer.android.com/develop/ui/compose/architecture)
+- `rememberSaveable` used inside a `LazyListScope` item factory (per-item expansion state, per-item form fields) — each entry is serialized into the saved-state `Bundle` which is capped at ~1 MB; large lists trigger `TransactionTooLargeException` → [state](https://developer.android.com/develop/ui/compose/state)
 
 Suggested interpretation:
 
@@ -242,6 +250,7 @@ Deduct for:
 - modifier ordering that quietly changes semantics in shared components (e.g. `Modifier.padding(...).clickable {}` extends the click region into the padding; `Modifier.clickable {}.padding(...)` does not). Flag when the choice looks accidental → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
 - `CompositionLocal` used for component-specific configuration (vs. truly tree-scoped data); ViewModels stored in `CompositionLocal`; locals with no sensible default → [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
 - custom modifiers built with `Modifier.composed { }` when `Modifier.Node` would do — `composed { }` is officially discouraged for performance → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
+- `Scaffold { innerPadding -> ... }` content that does not apply `innerPadding` to its root child (or consume it via `consumeWindowInsets`) — content draws behind the `TopAppBar` / `BottomAppBar` / system bars → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
 
 Suggested interpretation:
 
