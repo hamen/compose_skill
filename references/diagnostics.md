@@ -8,7 +8,21 @@ The single highest-leverage diagnostic. Generates per-composable skippability an
 
 **Reference:** <https://developer.android.com/develop/ui/compose/performance/tooling>, <https://developer.android.com/develop/ui/compose/performance/stability/diagnose>
 
-In the module's `build.gradle.kts`:
+### Primary path — automatic (what the skill actually does)
+
+The skill ships a Gradle init script at `scripts/compose-reports.init.gradle`. SKILL.md Step 4 runs it against the target without modifying any of the user's files:
+
+```bash
+cd <target> && ./gradlew <compile-task> \
+    --init-script <skill-dir>/scripts/compose-reports.init.gradle \
+    --no-daemon --quiet
+```
+
+The init script targets every module that applies the Compose Compiler plugin and writes reports to each module's `build/compose_audit/` directory. No `build.gradle.kts` edits are required on the target.
+
+### Fallback path — manual edit (only when the init-script flow is blocked)
+
+If the auditor (human or skill) cannot use `--init-script` — for example, a locked-down CI that rejects unknown init scripts — ask the user to add this block to the module's `build.gradle.kts`:
 
 ```kotlin
 composeCompiler {
@@ -17,7 +31,9 @@ composeCompiler {
 }
 ```
 
-(Requires the Compose Compiler Gradle plugin, which is the default since Kotlin 2.0. On older toolchains use `kotlinOptions.freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=..."]`.)
+(Requires the Compose Compiler Gradle plugin, default since Kotlin 2.0. On older toolchains use `kotlinOptions.freeCompilerArgs += ["-P", "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=..."]`.)
+
+### Reading the output
 
 Run a release-variant build, then inspect:
 
@@ -160,7 +176,7 @@ When you arrive at a Compose repo, run these in order before scoring:
 1. `rg -n 'androidx\.compose' -g '*.gradle*' -g '*.toml'` — confirm Compose presence (fast-fail).
 2. `rg -n 'kotlin\s*=\s*"' -g '*.toml'` — record Kotlin version (Strong Skipping baseline).
 3. `rg -n 'isMinifyEnabled' -g '*.gradle*'` — release hygiene.
-4. Look for `composeCompiler { reportsDestination ... }` — does the project already produce reports? If yes, read them. If no, recommend enabling and re-run.
+4. Run Step 4 of SKILL.md — the init script generates compiler reports automatically. If the build fails, read any existing `composeCompiler { reportsDestination ... }` output the project already produces; otherwise note the fallback in the report.
 5. `rg -l 'baselineProfile|ProfileInstaller' -g '*.gradle*' -g '*.kt'` — baseline-profile presence.
 
 These five greps tell you what kind of evidence is available before any rubric-level reading.

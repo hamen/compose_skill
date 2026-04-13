@@ -117,7 +117,49 @@ Look for:
 
 If the repo is large, audit by category or by module. If subagents are available, parallelize category scans by spawning `Explore`-type subagents (no write tools) and merge the findings.
 
-### 4. Audit The Four Categories
+### 4. Generate Compose Compiler Reports (Automatic)
+
+Do **not** ask the user to edit `build.gradle` or run commands themselves. The skill runs the build with a bundled Gradle init script that injects `reportsDestination` / `metricsDestination` into every Compose module without modifying any file in the target repo. Before scoring, attempt this:
+
+1. **Locate the init script** shipped with the skill: `scripts/compose-reports.init.gradle`. The absolute path is the skill's install location — in most installs that's `~/.claude/skills/jetpack-compose-audit/scripts/compose-reports.init.gradle`. If you cannot resolve the path, fall back to writing the script to `<target>/.compose-audit-reports.init.gradle` and delete it after the run.
+
+2. **Check for a Gradle wrapper** in the target: `test -x <target>/gradlew`. If missing, skip to the fallback in step 6.
+
+3. **Pick a compile target.** Prefer the cheapest task that still triggers Kotlin compilation for a Compose module:
+   - find the first application module via `rg -l 'com\.android\.application' -g '*.gradle*'`
+   - try in order: `:<app-module>:compileReleaseKotlinAndroid`, `:<app-module>:compileReleaseKotlin`, `assembleRelease`, `assembleDebug`
+   - If the project is Compose-only on a library (`com.android.library`), use that module instead.
+
+4. **Run the build.** Inform the user the build is starting (it may take several minutes).
+
+   ```bash
+   cd <target> && ./gradlew <task> \
+       --init-script <path-to>/compose-reports.init.gradle \
+       --no-daemon --quiet
+   ```
+
+   Use a 600-second timeout. If the task fails, try the next fallback task in step 3 once. Do **not** loop indefinitely.
+
+5. **Collect the reports.**
+
+   ```bash
+   find <target> -path '*/build/compose_audit/*' \
+       \( -name '*-classes.txt' -o -name '*-composables.txt' -o -name '*-composables.csv' -o -name '*-module.json' \)
+   ```
+
+   From these files, extract:
+   - **unstable classes** (lines starting with `unstable class ` in `*-classes.txt`) used as composable parameters
+   - **non-skippable but restartable composables** (`skippable = false` + `restartable = true`) in `*-composables.txt`
+   - **module-wide skippability counts** from `*-module.json` — cite these in the Performance section
+
+6. **Fallback if the build fails or Gradle is unavailable.** Proceed with source-inferred stability findings, but:
+   - set `Compiler diagnostics used: no` in the report's Notes And Limits and explain the failure reason briefly (wrapper missing, compile error, timeout)
+   - reduce overall confidence by one level
+   - state each stability-related deduction as "inferred from source — not verified against compiler reports"
+
+Stability deductions from step 5 are measured evidence and should be weighted normally. Fallback deductions from step 6 are inferred and must be flagged as such in the report.
+
+### 5. Audit The Four Categories
 
 Use the scoring rubric in `references/scoring.md` and the heuristics in `references/search-playbook.md`.
 
@@ -168,7 +210,7 @@ Check:
 - avoiding `MutableState<T>` or `State<T>` parameters in reusable APIs where a better shape exists
 - component purpose and layering
 
-### 5. Verify Findings
+### 6. Verify Findings
 
 Before deducting points:
 
@@ -176,9 +218,9 @@ Before deducting points:
 - make sure the pattern is real, not a false positive
 - check whether the repo already has a compensating pattern elsewhere
 - distinguish one-off mistakes from systemic patterns
-- if a finding depends on stability inference (skippable / restartable / unstable params), generate or request the Compose Compiler reports before deducting — do not infer stability from the source alone
+- for stability findings (skippable / restartable / unstable params), use the compiler reports generated in Step 4. Cite the specific report line (e.g. `app/build/compose_audit/app_release-classes.txt:42`) as evidence. Only fall back to source-inferred stability claims if Step 4 failed, and label them as such.
 
-### 6. Score
+### 7. Score
 
 Assign each category a `0-10` score and a status:
 
@@ -191,7 +233,7 @@ Use the weights in `references/scoring.md` to compute the overall score.
 
 If a category genuinely has too little auditable surface area, mark it `N/A`, explain why, and renormalize the remaining weights.
 
-### 7. Write The Report
+### 8. Write The Report
 
 Use `references/report-template.md`.
 
@@ -211,7 +253,7 @@ Write the report to:
 
 If `COMPOSE-AUDIT-REPORT.md` already exists at that path, do not overwrite it silently. Either confirm overwrite with the user, or write to `COMPOSE-AUDIT-REPORT-<YYYY-MM-DD>.md` alongside it.
 
-### 8. Return A Short Summary
+### 9. Return A Short Summary
 
 In chat, summarize:
 
@@ -254,3 +296,4 @@ For medium or large repositories:
 - `references/report-template.md` — required structure for `COMPOSE-AUDIT-REPORT.md`
 - `references/canonical-sources.md` — the official URLs every deduction must cite
 - `references/diagnostics.md` — copy-pasteable Gradle/code snippets for Compose Compiler reports, stability config, baseline profiles, and R8 checks
+- `scripts/compose-reports.init.gradle` — Gradle init script the skill injects via `--init-script` in Step 4 to generate compiler reports automatically
