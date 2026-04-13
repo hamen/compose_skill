@@ -231,6 +231,17 @@ Assign each category a `0-10` score and a status:
 
 Use the weights in `references/scoring.md` to compute the overall score.
 
+**Measured ceilings are mandatory, not suggestive.** When Step 4 produced compiler reports, the Performance rubric in `references/scoring.md` defines a ceiling based on `skippable%` and unstable-param count. After arriving at a qualitative Performance score, you MUST apply the ceiling and lower the score if it exceeds the cap. Show the math in the report:
+
+```
+Performance ceiling check:
+  skippable% = 186/273 = 68.1% → falls in 50-70% band → cap at 4
+  qualitative score: 7
+  applied score: 4 (ceiling lowered from 7)
+```
+
+Do not round `skippable%` up into a higher band. `68.1%` is not `≥70%`. If a qualitative score lands at or below the ceiling, no adjustment is needed — but the check itself must appear in the report so the reader can audit it.
+
 If a category genuinely has too little auditable surface area, mark it `N/A`, explain why, and renormalize the remaining weights.
 
 ### 8. Write The Report

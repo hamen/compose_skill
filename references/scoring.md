@@ -99,6 +99,10 @@ Deduct for:
 - `mutableStateOf<Int|Long|Float|Double>` where the typed factory exists (autoboxing) → [state](https://developer.android.com/develop/ui/compose/state)
 - `@NonSkippableComposable` / `@DontMemoize` opt-outs without a justifying comment → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
 - if the project is on a Compose Compiler track older than 1.5.4 / Kotlin 2.0.20, stability matters more than the rules above assume — note this in the report and weight unstable-param findings more heavily → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
+- `remember { … }` whose body reads `LocalConfiguration`, `LocalDensity`, or `LocalLayoutDirection` without declaring those values as keys — the cached value silently goes stale on rotation / foldable posture / font-scale changes → [state](https://developer.android.com/develop/ui/compose/state)
+- `indexOf()` / `lastIndexOf()` / `indexOfFirst { }` called inside a `LazyListScope` item factory — O(n²) scroll cost and crash risk when identity moves; use `itemsIndexed` instead → [lists](https://developer.android.com/develop/ui/compose/lists)
+- `animateItemPlacement()` on Compose 1.7+ — replaced by `Modifier.animateItem()` → [lists](https://developer.android.com/develop/ui/compose/lists)
+- Accompanist libraries where first-party replacements exist: `accompanist-pager` (→ `HorizontalPager`), `accompanist-swiperefresh` (→ `PullToRefreshBox`), `accompanist-flowlayout` (→ `FlowRow` / `FlowColumn`), `accompanist-systemuicontroller` (→ `enableEdgeToEdge()`) — deduct only when the replacement is available on the project's Compose version → [lists](https://developer.android.com/develop/ui/compose/lists)
 
 Suggested interpretation:
 
@@ -158,6 +162,7 @@ Deduct for:
 - `remember { computeFromInput(x) }` with no `key` — stale cached value when `x` changes → [state](https://developer.android.com/develop/ui/compose/state)
 - `viewModel()` invoked deep in a composable tree (rather than at the screen entry point) or ViewModels passed via `CompositionLocal` → [architecture](https://developer.android.com/develop/ui/compose/architecture), [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
 - `rememberSaveable { mutableStateOf(SomeNonBundleable(...)) }` without a `Saver` — restoration silently fails after process death → [state](https://developer.android.com/develop/ui/compose/state)
+- string-based navigation routes (`composable("home")`, `navigate("profile/$id")`) on Navigation Compose 2.8+ where type-safe `@Serializable` routes are available — loses compile-time checking and encourages argument-encoding bugs → [navigation](https://developer.android.com/develop/ui/compose/navigation)
 
 Suggested interpretation:
 

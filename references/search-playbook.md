@@ -59,6 +59,9 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - typed state factories: `mutableIntStateOf`, `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`
 - composition-marker annotations: `@ReadOnlyComposable`, `@NonRestartableComposable`
 - baseline / profile setup: `baselineProfile`, `ProfileInstaller`, `androidx\.profileinstaller`, `baseline-prof\.txt`
+- deprecated/legacy APIs: `accompanist-pager`, `accompanist-swiperefresh`, `accompanist-flowlayout`, `accompanist-systemuicontroller`, `animateItemPlacement\(`
+- config-derived reads inside `remember {}`: `LocalConfiguration`, `LocalDensity`, `LocalLayoutDirection`
+- `\.indexOf\(|\.lastIndexOf\(|\.indexOfFirst\s*\{` inside lazy item factories
 
 ### Red Flags To Verify
 
@@ -71,6 +74,10 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - `mutableStateOf<Int>` / `<Long>` / `<Float>` / `<Double>` — the typed factories avoid boxing
 - raw `List`/`Map`/`Set` parameters on widely reused composables when `kotlinx.collections.immutable` is already a dependency
 - `@NonSkippableComposable` / `@DontMemoize` without a justifying comment
+- `remember { … }` whose body reads `LocalConfiguration` / `LocalDensity` / `LocalLayoutDirection` without listing that source as a key — cached value goes stale on rotation/foldable/font-scale changes
+- `indexOf(...)` / `lastIndexOf(...)` / `indexOfFirst { ... }` called inside a `LazyListScope` item factory — O(n²) scrolling cost and crash risk if identity moves; prefer `itemsIndexed`
+- `animateItemPlacement()` usage on Compose 1.7+ — replaced by `Modifier.animateItem()`
+- Accompanist libraries where first-party replacements exist: `accompanist-pager` → `HorizontalPager` / `VerticalPager`; `accompanist-swiperefresh` → `PullToRefreshBox`; `accompanist-flowlayout` → `FlowRow` / `FlowColumn`; `accompanist-systemuicontroller` → `enableEdgeToEdge()`
 
 ### Positive Signals
 
@@ -159,6 +166,7 @@ Confirm the project's compiler version:
 - `LifecycleEventObserver`
 - `BackHandler`
 - `NavHost`, `composable\(` (in nav graphs), `navController\.navigate`
+- string-based nav routes: `composable\(\s*"` and `navigate\(\s*"` (suggest type-safe `@Serializable` routes on Navigation Compose 2.8+)
 
 ### Red Flags To Verify
 
