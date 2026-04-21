@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Rubric version:** v1 — current as of 2026-04-13. Compose track: Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default).
+**Skill version:** 1.1 — released 2026-04-21. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -114,6 +114,7 @@ Look for:
 - `collectAsStateWithLifecycle`, `collectAsState`
 - `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `rememberUpdatedState`, `produceState`
 - `LazyColumn`, `LazyRow`, `items`, `itemsIndexed`
+- animation APIs: `animate*AsState`, `Animatable`, `updateTransition`, `rememberInfiniteTransition`, `AnimatedVisibility`, `AnimatedContent`, `Crossfade`
 
 If the repo is large, audit by category or by module. If subagents are available, parallelize category scans by spawning `Explore`-type subagents (no write tools) and merge the findings.
 
@@ -173,6 +174,7 @@ Focus on:
 - bad state-read timing
 - unstable or overly broad reads
 - backwards writes
+- animation phase correctness (per-frame values deferred to layout/draw via lambda modifiers, `Animatable` held in `remember`, `rememberInfiniteTransition` scoped so it stops offscreen)
 - obvious release-performance hygiene where visible
 
 #### State Management
@@ -196,6 +198,7 @@ Focus on:
 - stale lambda capture
 - cleanup correctness
 - lifecycle-aware effect behavior
+- animations driven from `LaunchedEffect(target)` for target-driven state changes (not from the composition body; `rememberCoroutineScope().launch { animateTo(...) }` is usually for event- or gesture-driven animation)
 
 #### Composable API Quality
 
@@ -208,6 +211,7 @@ Check:
 - explicit over implicit configuration
 - meaningful defaults
 - avoiding `MutableState<T>` or `State<T>` parameters in reusable APIs where a better shape exists
+- reusable animated components exposing `animationSpec: AnimationSpec<T>` where callers may reasonably need timing control, and using meaningful `label` values on shared/tooling-visible animations
 - component purpose and layering
 
 ### 6. Verify Findings

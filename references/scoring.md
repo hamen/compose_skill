@@ -87,6 +87,9 @@ Reward:
 - `ReportDrawnWhen { ... }` used to signal first-meaningful-content for accurate TTID/TTFD metrics → [tooling](https://developer.android.com/develop/ui/compose/performance/tooling)
 - edge-to-edge opt-in via `enableEdgeToEdge()` (first-party) rather than `accompanist-systemuicontroller` on projects that support it → [lists](https://developer.android.com/develop/ui/compose/lists)
 - evidence the team uses Compose Compiler reports / metrics to verify skippability → [tooling](https://developer.android.com/develop/ui/compose/performance/tooling), [diagnose](https://developer.android.com/develop/ui/compose/performance/stability/diagnose)
+- animated values read through lambda modifiers (`Modifier.graphicsLayer { ... }`, `Modifier.offset { ... }`, `Modifier.drawBehind { ... }`) so per-frame updates stay in the layout/draw phase and skip recomposition → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
+- `Animatable` held in `remember { Animatable(...) }` and driven from a `LaunchedEffect` — state survives recomposition, animation is cancelled on dispose → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
+- `AnimatedContent` used when the call site needs custom enter/exit or size-aware content transforms, while `Crossfade` is used for standard fade-only content swaps → [animation](https://developer.android.com/develop/ui/compose/animation/introduction)
 
 Deduct for:
 
@@ -108,6 +111,9 @@ Deduct for:
 - Accompanist libraries where first-party replacements exist: `accompanist-pager` (→ `HorizontalPager`), `accompanist-swiperefresh` (→ `PullToRefreshBox`), `accompanist-flowlayout` (→ `FlowRow` / `FlowColumn`), `accompanist-systemuicontroller` (→ `enableEdgeToEdge()`) — deduct only when the replacement is available on the project's Compose version → [lists](https://developer.android.com/develop/ui/compose/lists)
 - `Canvas` / `Spacer` with only `Modifier.fillMaxSize()` and no explicit height or aspect ratio — may enter draw with `Size.Zero`, producing `NaN` math and Skia-pipeline crashes. Require `Modifier.size(...)`, `Modifier.height(...)`, or `Modifier.aspectRatio(...)` on drawing surfaces → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - lazy-list `key = { ... }` computed from a source that cannot guarantee uniqueness (merged flows, paginated streams, `hashCode()` on non-`data class`) — `IllegalArgumentException: Key ... was already used` crashes production. Verify with the duplicate-lazy-key heuristic in `search-playbook.md` → [lists](https://developer.android.com/develop/ui/compose/lists)
+- `Animatable(...)` created inside a composable body without `remember { Animatable(...) }` (and not hoisted from a state holder) — the animation state is rebuilt on recomposition, which restarts the animation and drops in-flight velocity/target → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
+- per-frame animated values read in the composition body and piped into non-lambda modifiers (`Modifier.offset(x.value.dp)`, `Modifier.alpha(alpha.value)`, `Modifier.rotate(rot.value)`). Every frame triggers recomposition of the caller instead of only re-laying-out or re-drawing. Prefer lambda-form `Modifier.offset { IntOffset(x.value.roundToInt(), 0) }` / `Modifier.graphicsLayer { alpha = alphaAnim.value; rotationZ = rot.value }` → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
+- `rememberInfiniteTransition()` hosted in a composable that stays in composition while offscreen (e.g. inside a `Scaffold` content that does not unmount on tab switch) — the animation keeps running until the host is removed from composition, creating needless offscreen work. Host it inside `AnimatedVisibility` / lazy-list item, or gate with an `if (visible) { ... }` branch → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
 
 Suggested interpretation:
 
@@ -195,6 +201,8 @@ Reward:
 - `snapshotFlow { … }` collected from inside a `LaunchedEffect` for Compose-state → Flow conversions → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `rememberCoroutineScope()` used only for event-driven work (button taps, gesture handlers); long-lived/keyed work lives in `LaunchedEffect` → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - navigation, snackbar, analytics, and repository calls live in event handlers or `LaunchedEffect`, never in the composition body → [side-effects](https://developer.android.com/develop/ui/compose/side-effects), [navigation](https://developer.android.com/develop/ui/compose/navigation)
+- `Animatable.animateTo(...)` / `snapTo(...)` driven from a `LaunchedEffect(key)` so the animation cancels on key change and on composition exit → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- declarative targets use `animate*AsState` and leave coroutine management to Compose; manual `rememberCoroutineScope().launch { ... }` is reserved for event-driven or gesture-driven animation → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 
 Deduct for:
 
@@ -209,6 +217,8 @@ Deduct for:
 - `derivedStateOf { a + b }`-style misuse where inputs change as often as outputs — pure overhead per the official guidance → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `LaunchedEffect(Unit)` / `LaunchedEffect(true)` flagged only when the body captures parameter or state values that may change without being keyed or wrapped in `rememberUpdatedState`. The "run once on enter" pattern itself is idiomatic; do not deduct for it → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `navController.navigate(...)` invoked from the composition body instead of an event handler or effect → [navigation](https://developer.android.com/develop/ui/compose/navigation)
+- `rememberCoroutineScope().launch { animatable.animateTo(target) }` where a `LaunchedEffect(target) { animatable.animateTo(target) }` would more clearly express target-driven animation — prefer `LaunchedEffect(target)` when restart semantics should follow the key automatically; keep `rememberCoroutineScope()` for event- or gesture-driven animation → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- `Animatable.animateTo(...)` invoked from the composition body (not from inside an effect) — runs on every recomposition and never cancels → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 
 Suggested interpretation:
 
@@ -237,6 +247,7 @@ Reward:
 - `movableContentOf` / `movableContentWithReceiverOf` used to preserve slot-content lifecycle when content moves between containers → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
 - reusable APIs prefer `value: T` (immediate read) or `value: () -> T` (deferred read) plus `onValueChange: (T) -> Unit` over `MutableState<T>` parameters → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
 - isolated components define `@Preview` configurations to prove they render stateless → [tooling](https://developer.android.com/develop/ui/compose/tooling/previews)
+- reusable animated components expose `animationSpec: AnimationSpec<T> = spring()` (or another appropriate default) when callers may reasonably need timing control, and use meaningful labels on shared/tooling-visible animations → [animation](https://developer.android.com/develop/ui/compose/animation/customize)
 
 Deduct for:
 
@@ -259,6 +270,8 @@ Deduct for:
 - `CompositionLocal` used for component-specific configuration (vs. truly tree-scoped data); ViewModels stored in `CompositionLocal`; locals with no sensible default → [compositionlocal](https://developer.android.com/develop/ui/compose/compositionlocal)
 - custom modifiers built with `Modifier.composed { }` when `Modifier.Node` would do — `composed { }` is officially discouraged for performance → [custom modifiers](https://developer.android.com/develop/ui/compose/custom-modifiers)
 - `Scaffold { innerPadding -> ... }` content that does not apply `innerPadding` to its root child (or consume it via `consumeWindowInsets`) — content draws behind the `TopAppBar` / `BottomAppBar` / system bars → [component API](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md)
+- highly reusable animated composables that hard-code `tween(N)` / specific `spring()` stiffness in the signature when callers would reasonably need control over timing — consider exposing `animationSpec: AnimationSpec<T>` instead → [animation](https://developer.android.com/develop/ui/compose/animation/customize)
+- shared/tooling-visible `animate*AsState` / `updateTransition` call sites missing a meaningful `label` parameter — reduces clarity in Animation Preview and other Android Studio tooling; treat as a light deduction, not a hard failure → [animation](https://developer.android.com/develop/ui/compose/animation/customize)
 
 Suggested interpretation:
 

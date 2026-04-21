@@ -38,6 +38,24 @@ These ground:
 - Compose Compiler reports / metrics as the primary diagnostic for skippability and stability
 - performance mindset and baseline-profile awareness
 
+### Animation
+
+- Android Developers: `Animations in Compose`  
+  `https://developer.android.com/develop/ui/compose/animation/introduction`
+- Android Developers: `Value-based animations` (`animate*AsState`, `Animatable`, `updateTransition`, `rememberInfiniteTransition`)  
+  `https://developer.android.com/develop/ui/compose/animation/value-based`
+- Android Developers: `Customize animations` (`AnimationSpec`, `tween`, `spring`, `label`)  
+  `https://developer.android.com/develop/ui/compose/animation/customize`
+
+These ground:
+
+- `remember { Animatable(...) }` lifecycle correctness
+- lambda-modifier reads (`graphicsLayer { ... }`, `offset { ... }`) as the phase-correct path for per-frame animated values
+- `Animatable.animateTo` driven from `LaunchedEffect`
+- `AnimatedContent` vs `Crossfade` for structural swaps
+- reusable animated components exposing `animationSpec` and `label`
+- scoping `rememberInfiniteTransition` so it stops when the host leaves composition
+
 ### State
 
 - Android Developers: `State and Jetpack Compose`  

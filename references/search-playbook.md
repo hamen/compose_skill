@@ -63,6 +63,8 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - config-derived reads inside `remember {}`: `LocalConfiguration`, `LocalDensity`, `LocalLayoutDirection`
 - `\.indexOf\(|\.lastIndexOf\(|\.indexOfFirst\s*\{` inside lazy item factories
 - `Canvas\s*\(` and `Spacer\s*\(` — check each hit for an explicit `size` / `height` / `aspectRatio` on the modifier; bare `fillMaxSize()` on a drawing surface can enter draw with `Size.Zero`
+- animation APIs: `animate\w+AsState\b`, `updateTransition\b`, `rememberInfiniteTransition\b`, `Animatable\b`, `AnimatedVisibility\b`, `AnimatedContent\b`, `Crossfade\b`
+- animation-to-modifier hand-off: lines where `\.value\b` from an animated state (`animate\w+AsState`, `Animatable`, `updateTransition`) is passed to `Modifier.offset\(`, `Modifier.alpha\(`, `Modifier.rotate\(`, `Modifier.scale\(`, `Modifier.padding\(` — verify whether the lambda-form (`Modifier.offset { ... }`, `Modifier.graphicsLayer { ... }`) would defer the read to the layout/draw phase
 - `ReportDrawnWhen\s*\{` — positive signal for startup metrics
 - `enableEdgeToEdge\s*\(` — positive signal; also confirms the project is not reaching for the deprecated `accompanist-systemuicontroller`
 
@@ -81,6 +83,10 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - `indexOf(...)` / `lastIndexOf(...)` / `indexOfFirst { ... }` called inside a `LazyListScope` item factory — O(n²) scrolling cost and crash risk if identity moves; prefer `itemsIndexed`
 - `animateItemPlacement()` usage on Compose 1.7+ — replaced by `Modifier.animateItem()`
 - Accompanist libraries where first-party replacements exist: `accompanist-pager` → `HorizontalPager` / `VerticalPager`; `accompanist-swiperefresh` → `PullToRefreshBox`; `accompanist-flowlayout` → `FlowRow` / `FlowColumn`; `accompanist-systemuicontroller` → `enableEdgeToEdge()`
+- `Animatable\s*\(` created in a composable body without `remember { ... }` or hoisting — each recomposition creates a fresh `Animatable` and restarts the animation
+- animated `.value` read in composition body and piped to state-reading modifiers: `Modifier\.(offset|alpha|rotate|scale|padding)\s*\(\s*\w+\.value` — prefer lambda-form modifiers to defer per-frame reads to layout/draw
+- `rememberInfiniteTransition\s*\(` hosted outside of an `AnimatedVisibility` / lazy-list item / `if (visible)` guard — verify that the host actually leaves composition when offscreen; if not, the animation keeps running until removal and does needless offscreen work
+- `Crossfade\s*\(` used where the call site appears to need custom enter/exit or size-aware transitions — consider whether `AnimatedContent` is the better API
 
 ### Positive Signals
 
@@ -117,6 +123,25 @@ When uniqueness is not guaranteed, flag as a latent crash and suggest a dedup in
 ### Scaffold Inner-Padding Heuristic
 
 `Scaffold` exposes `innerPadding` to its content lambda. If the content ignores it, elements are drawn behind the `TopAppBar` or `BottomAppBar`. Search for `Scaffold(` and read each hit — the content lambda parameter should be applied to the root-most child via `Modifier.padding(innerPadding)` (or `.consumeWindowInsets(innerPadding)`). If a `Scaffold { }` discards the padding parameter with `_ ->` or omits it entirely while nesting non-trivial content, flag it.
+
+### Animation Phase-Smell Heuristic
+
+Per-frame animated values belong in the layout or draw phase, not in recomposition. No clean single regex — walk the animation call sites and read each one:
+
+1. List files with animation APIs: `rg -l 'animate\w+AsState|updateTransition|Animatable|rememberInfiniteTransition' -g '*.kt'`
+2. For each hit, locate where the animated `.value` is consumed. Flag when:
+   - `val x by animate*AsState(...)` feeds `Modifier.offset(x.dp)`, `Modifier.alpha(x)`, `Modifier.rotate(x)`, `Modifier.scale(x)`, `Modifier.padding(x.dp)` — the state read happens at composition time, so every frame recomposes the caller. Lambda-form alternatives (`Modifier.offset { IntOffset(...) }`, `Modifier.graphicsLayer { ... }`) defer the read to layout / draw.
+   - `Animatable(...)` is created in a composable body without `remember { ... }` or hoisting.
+   - `animateTo(...)` / `snapTo(...)` is launched from the composition body rather than a `LaunchedEffect` or an event handler.
+   - `rememberInfiniteTransition()` is hosted in a composable that stays composed offscreen (tab host, drawer content that is cheaper to keep mounted) — the animation keeps running until the host is removed from composition, with no visible benefit while offscreen.
+
+Positive signals to reward:
+
+- `Modifier.graphicsLayer { alpha = alphaAnim.value; rotationZ = rot.value }` for alpha / rotation / scale animations
+- `Modifier.offset { IntOffset(offset.value.roundToInt(), 0) }` for position animations
+- `remember { Animatable(...) }` + `LaunchedEffect(target) { animatable.animateTo(target) }` pattern
+- `AnimatedContent(targetState, label = "...")` when the call site needs custom enter/exit or size-aware transitions; `Crossfade` for standard fade-only swaps
+- reusable animated components exposing `animationSpec: AnimationSpec<T>` when callers need timing control, and using meaningful labels on tooling-visible animations
 
 ### Strong Skipping Mode Check
 
@@ -190,6 +215,8 @@ Confirm the project's compiler version:
 - `BackHandler`
 - `NavHost`, `composable\(` (in nav graphs), `navController\.navigate`
 - string-based nav routes: `composable\(\s*"` and `navigate\(\s*"` (suggest type-safe `@Serializable` routes on Navigation Compose 2.8+)
+- `\.animateTo\s*\(` / `\.snapTo\s*\(` on `Animatable` instances — check each hit is inside a `LaunchedEffect(...)` (correct) or a gesture / event handler (acceptable), not the composition body
+- `rememberCoroutineScope\(\)` followed nearby by `\.launch\s*\{[^}]*animateTo` — likely a target-driven animation written imperatively; check whether `LaunchedEffect(target)` would express restart semantics more clearly
 
 ### Red Flags To Verify
 
@@ -203,6 +230,8 @@ Confirm the project's compiler version:
 - `rememberCoroutineScope()` used to launch keyed/long-lived work that belongs in a `LaunchedEffect`
 - `snapshotFlow { ... }` invoked outside an effect, or used to compute a value that `derivedStateOf` would handle more cheaply
 - `derivedStateOf { a + b }`-style misuse — when input frequency ≈ output frequency it is pure overhead (the official antipattern)
+- an `Animatable` animation launched from the composition body (not inside `LaunchedEffect` or an event handler) — it will restart with recomposition and bypass effect lifecycle semantics
+- `rememberCoroutineScope().launch { animatable.animateTo(...) }` where the animation reacts purely to a `targetState` change — `LaunchedEffect(targetState) { animatable.animateTo(targetState) }` is often the clearer fit because restart semantics follow `targetState` automatically
 
 ### Positive Signals
 
