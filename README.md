@@ -16,7 +16,7 @@ Run the skill on a Compose repo and you walk away with:
 
 - **`COMPOSE-AUDIT-REPORT.md`** written at the target root — per-category scoring, evidence file paths, line numbers, and prioritized fixes.
 - **A chat summary** that mirrors the report's top three fixes — same file paths, same doc links, same predicted impact. Act on the chat alone if you're short on time.
-- **Measured stability numbers** from the Compose Compiler — `skippable%`, unstable-class list, and the `@Stable` / `@Immutable` opportunities the compiler actually sees.
+- **Measured stability numbers** from the Compose Compiler — module-wide `skippable%`, named-only `skippable%`, the unstable-class list, and the per-module Strong Skipping state inferred from compiler version plus explicit flags.
 - **A score you can defend.** Every deduction carries an official Android Developers URL. No "trust me" findings.
 
 ---
@@ -42,7 +42,7 @@ Concrete smells the rubric targets, with realistic wins:
 
 | Smell | Expected gain after fix |
 |-------|-------------------------|
-| Unstable classes used as composable params (`List`, domain models, `ArrayList`-backed state) | Lifts measured `skippable%` — often from 60-70% into 85-95% — which lifts the Performance ceiling from `4` to `6-8` |
+| Unstable or repeatedly recreated params (`List`, domain models, `ArrayList`-backed state, `listOf(...)`, fresh UI models) | On older compiler tracks, can lift named-only `skippable%` and the Performance ceiling. Under Strong Skipping, usually removes instance-recreation churn or expensive `equals()` work that was still forcing re-runs despite high skippability. |
 | Lazy-list `items(...)` without stable `key =` | Fewer reallocated compositions on reorder, smoother scroll, fewer `IllegalArgumentException: Key already used` crashes |
 | Rapidly-changing state read high in the tree | Recompositions collapse from "per frame, whole screen" to "per frame, single modifier" |
 | Animated `.value` piped into `Modifier.offset(x.dp)` / `Modifier.alpha(a)` | Moving to `Modifier.graphicsLayer { ... }` / `Modifier.offset { ... }` defers per-frame reads to layout/draw — same animation, fraction of the recomposition cost |
@@ -63,11 +63,11 @@ The report lists every occurrence with file path and line number, not just the c
 
 **Measured, not inferred.** The skill ships `scripts/compose-reports.init.gradle` and injects it into your Gradle build via `--init-script` — no edits to your `build.gradle`. Every run parses real `*-classes.txt` / `*-composables.txt` / `*-module.json` output.
 
-**Mandatory ceilings.** A Performance score cannot exceed the cap set by measured `skippable%` and unstable-param count. 69% skippability caps Performance at `4` — no room for generous interpretation. The ceiling math appears in the report so the score is auditable.
+**Mandatory ceilings.** A Performance score cannot exceed the cap set by the matching ceiling table. On older compiler tracks the cap is driven by `skippable%` plus unstable-param count; under Strong Skipping it is driven by named-only `skippable%`, instance-recreation churn, and `equals()` quality on unstable params. The ceiling math appears in the report so the score is auditable.
 
 **Every deduction cites an official source.** Each finding carries a `References:` line pointing at `developer.android.com` or the AndroidX component API guidelines. Audits that can't be defended with a URL don't ship.
 
-**Actionable chat summary.** The chat output mirrors the report's `Prioritized Fixes` — same file paths, same doc links, same predicted impact ("moves `skippable%` from 69% → ~85%, Performance ceiling 4 → 6").
+**Actionable chat summary.** The chat output mirrors the report's `Prioritized Fixes` — same file paths, same doc links, same predicted impact ("stops rebuilding `FeedItemUiModel`, removes the Strong-Skipping cap from 8 → no cap").
 
 ---
 
@@ -110,17 +110,21 @@ The compiler-report build runs automatically and typically takes 1-5 minutes. If
 ## Example output
 
 ```
-Overall: 59/100
+Overall: 73/100
 
-Performance:  4/10  capped by skippable% 69.14% (qualitative 7)
+Performance:  8/10  capped by the SSM-on table: instance-recreation churn in feed params (qualitative 9)
 State:        6/10  collectAsState without lifecycle, duplicate VM reads
 Side effects: 7/10  LaunchedEffect key too broad at HomeScreen.kt:240
 API quality:  8/10  BoxCard / SearchBar follow conventions
 
 Compiler:
-  Strong Skipping: on
-  skippable% = 186/269 = 69.14%
+  Strong Skipping: on (default)
+  ceiling table: SSM-on
+  module-wide skippable% = 186/269 = 69.14%
+  named-only skippable% = 121/122 = 99.18%
+  ceiling metric: named-only `skippable%` (module-wide metric anchored by zero-arg lambdas)
   deferredUnstableClasses: 59
+  binding cap: 8 (fresh `FeedItemUiModel(...)` + `listOf(...)` rebuilt in `HomeFeedScreen`)
 
 Top 3 fixes
 1. collectAsState -> collectAsStateWithLifecycle across 6 call sites
@@ -128,10 +132,10 @@ Top 3 fixes
    Doc: developer.android.com/.../side-effects
    Impact: fewer redundant collections, lifecycle-correct
 
-2. Stabilize HomeFeedScreen / HomeFeedItem / BoxCard params
-   Evidence: app/build/compose_audit/app_release-classes.txt
+2. Stop rebuilding `FeedItemUiModel(...)` and `listOf(...)` inside `HomeFeedScreen`
+   Evidence: app/build/compose_audit/app_release-classes.txt, feature/home/HomeFeedScreen.kt:88-132
    Doc: developer.android.com/.../stability
-   Impact: skippable% 69% -> ~85%, Performance ceiling 4 -> 6
+   Impact: removes forced re-runs under Strong Skipping, likely clears the Performance cap from 8 -> no cap
 
 3. Narrow LaunchedEffect(homeScreenState) at HomeScreen.kt:240-254
    Doc: developer.android.com/.../side-effects
@@ -156,6 +160,24 @@ Top 3 fixes
 ---
 
 ## Changelog
+
+### 1.1.1 — 2026-04-21
+
+**Refined — Strong Skipping-aware scoring, detection, and reporting.**
+
+This is a corrective follow-up to `1.1`. After feedback around Strong Skipping Mode, the skill now evaluates modern Compose repos the way the compiler actually behaves on Kotlin `2.0.20+` / Compose Compiler `1.5.4+`.
+
+- **Performance rubric**: split the measured-ceiling logic into explicit **SSM-off** and **SSM-on** paths. On older compiler tracks, ceilings still depend on `skippable%` and unstable shared params. Under Strong Skipping, the audit no longer blindly caps scores because a repo uses raw `List` params or misses `@Stable` on its own.
+- **What now matters under SSM**: the audit now looks for the issues that still materially defeat skipping in practice: per-recomposition param churn (`listOf(...)`, `mapOf(...)`, fresh UI models, object / lambda literals in composable bodies), expensive or broken `equals()` on unstable params, and unjustified `@NonSkippableComposable` / `@DontMemoize` opt-outs on hot paths.
+- **More honest compiler interpretation**: the docs now explicitly distinguish module-wide `skippable%` from **named-only `skippable%`**, because zero-argument lambdas can artificially drag down the raw module number. Reports are instructed to say which metric actually bound the ceiling.
+- **Collection guidance corrected**: `ImmutableList` / `PersistentList` are no longer framed as a mandatory cargo-cult fix under Strong Skipping. They still earn credit, but for the right reasons: structural sharing, predictable equality, and lower churn when collections are reused deliberately.
+- **Search playbook**: the Strong Skipping section now tells the agent exactly how to detect explicit opt-ins / opt-outs, when **not** to deduct for raw `List` params or missing `@Stable`, and what to inspect instead when SSM is active.
+- **Diagnostics**: Strong Skipping is now resolved **per module**, not assumed once for the whole repo. The diagnostics docs cover default-on, explicit opt-out, older-version opt-in, and mixed-module repos where different modules may require different ceiling tables.
+- **Report template**: added a mandatory **Performance ceiling check** block so every report records Strong Skipping status, the table applied, module-wide vs named-only `skippable%`, unstable shared-type count, the actual binding cap, and the final applied score.
+- **Chat summary guidance**: the short final summary now mirrors the same SSM-aware framing as the report. Under SSM, expected impact is described in terms of removing churn, fixing `equals()`, or clearing the binding cap rather than promising a magic `skippable%` jump.
+- **README examples and docs**: refreshed the public-facing example output to show a realistic SSM-era case: Strong Skipping on, high named-only skippability, and a score capped by recreated params rather than by the raw module-wide percentage.
+
+**Net effect:** fewer false positives on modern Compose codebases, fewer cargo-cult recommendations, and more defensible audit reports when the repo already runs with Strong Skipping enabled by default.
 
 ### 1.1 — 2026-04-21
 

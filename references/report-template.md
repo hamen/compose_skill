@@ -44,6 +44,18 @@ Example format:
 
 ### Performance — [X/10]
 
+**Ceiling check**
+
+- Strong Skipping: [on / off / mixed across modules]
+- Ceiling table applied: [SSM-on / SSM-off / mixed, with a one-line explanation]
+- Module-wide `skippable%`: [x/y = z%]
+- Named-only `skippable%`: [x/y = z% — state explicitly if this was the binding ceiling metric because zero-arg lambdas anchored the module-wide number]
+- Unstable shared types from compiler: [count, or `n/a` if diagnostics unavailable]
+- SSM-on binding evidence: [instance-recreation churn / expensive or broken `equals()` / unjustified opt-outs / none observed]
+- Qualitative score: [X/10]
+- Ceiling: [none / cap at N]
+- Applied score: [X/10]
+
 **What is working**
 
 - [positive evidence]
@@ -118,9 +130,10 @@ Example format:
 - [state if only part of the repo was audited]
 - [state if confidence is medium/low]
 - [state if some categories had limited surface area]
+- Strong Skipping mode: [on / off / mixed across modules; note any explicit module-level opt-in / opt-out]
 - Weight choice: [default 35/25/20/20, or note any deviation and why]
 - Renormalization: [list any N/A categories and the renormalized weights]
-- Compiler diagnostics used: [yes / no — link to the Compose Compiler reports if generated; "no" means stability claims are inferred from source, not measured]
+- Compiler diagnostics used: [yes / no — link to the Compose Compiler reports if generated; if yes, note which modules contributed, whether module-wide and named-only `skippable%` were available, and which ceiling table was applied; "no" means stability claims are inferred from source, not measured]
 
 ## Suggested Follow-Up
 

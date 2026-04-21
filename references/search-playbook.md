@@ -147,8 +147,17 @@ Positive signals to reward:
 
 Confirm the project's compiler version:
 
-- `rg -n 'kotlin\s*=\s*"' -g '*.toml'` and `rg -n 'org\.jetbrains\.kotlin' -g '*.gradle*'` to find the Kotlin version
-- Strong Skipping is on by default at Kotlin **2.0.20+**; below that, stability inference matters more and unstable params more aggressively block skipping. With Strong Skipping ON, optimizations like wrapping `List` in `@Stable` classes, using `ImmutableList`, or wrapping lambdas in `remember { ... }` are generally unnecessary unless the instances are actively re-allocated on recomposition. Do not deduct for raw `List` parameters or missing `@Stable` annotations if Strong Skipping is active, unless you observe instance-recreation churn.
+- Find the Kotlin version: `rg -n 'kotlin\s*=\s*"' -g '*.toml'` and `rg -n 'org\.jetbrains\.kotlin' -g '*.gradle*'`.
+- Find any explicit Strong Skipping toggle: `rg -n 'enableStrongSkippingMode|StrongSkipping' -g '*.gradle*' -g '*.properties'`.
+- Strong Skipping is on by default at Kotlin **2.0.20+** / Compose Compiler **1.5.4+**. Earlier versions can opt in via `-Pandroidx.compose.compiler.enableStrongSkippingMode=true` or the equivalent `freeCompilerArgs` flag.
+
+Scoring implications — decide once, apply consistently through the report:
+
+- **Strong Skipping OFF (pre-2.0.20 or explicitly disabled).** Stability inference matters; unstable params aggressively block skipping. Deduct normally for raw `List` / `Map` / `Set` params on reused composables, unstable `data class` params, and missing `@Stable` / `@Immutable` annotations.
+- **Strong Skipping ON.** All restartable composables become skippable and lambdas are auto-memoized via `==` / instance equality. Wrapping `List` in `@Stable` classes, using `ImmutableList`, or wrapping lambdas in `remember { ... }` is no longer required *just to enable skipping*. **Do not** deduct for raw `List` parameters or missing `@Stable` annotations under SSM on their own.
+- **Under Strong Skipping, deduct instead for the two real hot-path smells:**
+  - **Instance-recreation churn.** `listOf(...)`, `mapOf(...)`, `setOf(...)`, fresh object literals, or `MyParams(...)` allocated inside a composable body and passed as a param. Search with `rg -n 'listOf\(|mapOf\(|setOf\(' -g '*.kt'` inside files that also contain `@Composable`, and read each hit — if the call sits in a composable body (not in a `remember { }`, state holder, or ViewModel) and the result is forwarded to a child composable, flag it.
+  - **Expensive or broken `equals()` on unstable params.** Plain `class Foo(...)` (identity equality) passed to reusable composables, `data class` wrapping a large collection (deep `==` per recomposition), or `data class` with `var` / mutable fields (stale skip results). Cross-reference the compiler report's unstable-classes list against each unstable class's definition to triage.
 
 ## 4. State Management Checks
 

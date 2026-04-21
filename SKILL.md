@@ -235,14 +235,17 @@ Assign each category a `0-10` score and a status:
 
 Use the weights in `references/scoring.md` to compute the overall score.
 
-**Measured ceilings are mandatory, not suggestive.** When Step 4 produced compiler reports, the Performance rubric in `references/scoring.md` defines a ceiling based on `skippable%` and unstable-param count. After arriving at a qualitative Performance score, you MUST apply the ceiling and lower the score if it exceeds the cap. Show the math in the report:
+**Measured ceilings are mandatory, not suggestive.** When Step 4 produced compiler reports, the Performance rubric in `references/scoring.md` defines a ceiling. First determine whether Strong Skipping is active (Kotlin 2.0.20+ / Compose Compiler 1.5.4+, or an explicit opt-in flag) and pick the matching table — the SSM-off table is driven by `skippable%` + unstable-class count, the SSM-on table by `skippable%` + instance-recreation churn + `equals()` quality on unstable params. After arriving at a qualitative Performance score, you MUST apply the ceiling and lower the score if it exceeds the cap. Show the math in the report, and name which table was applied:
 
 ```
 Performance ceiling check:
+  Strong Skipping: OFF (Kotlin 1.9.x, no opt-in) → applying SSM-off table
   skippable% = 186/273 = 68.1% → falls in 50-70% band → cap at 4
   qualitative score: 7
   applied score: 4 (ceiling lowered from 7)
 ```
+
+Under Strong Skipping, `skippable%` will typically sit near 100% and stop being the binding constraint; the cap is usually driven by observed churn (`listOf(...)` / `mapOf(...)` / fresh literals passed into composables) or by expensive / broken `equals()` on unstable params. Name those findings explicitly in the ceiling-check block so the reader can audit the pick.
 
 Do not round `skippable%` up into a higher band. `68.1%` is not `≥70%`. If a qualitative score lands at or below the ceiling, no adjustment is needed — but the check itself must appear in the report so the reader can audit it.
 
@@ -275,13 +278,13 @@ In chat, produce a summary that mirrors the report's `Prioritized Fixes` section
 Include:
 
 - overall score (and the delta vs. any prior `COMPOSE-AUDIT-REPORT*.md` at the same path, if present)
-- one-line judgment for each category, with the applied ceiling if any (e.g. "Performance 6/10 — capped by 79% skippability")
-- compiler-report highlights when Step 4 succeeded: Strong Skipping on/off, `skippable%`, count of unstable shared types, any module that failed to build
+- one-line judgment for each category, with the applied ceiling if any (e.g. "Performance 8/10 — capped by the SSM-on table: recreated `FeedItemUiModel` params")
+- compiler-report highlights when Step 4 succeeded: Strong Skipping on/off (or mixed across modules), which ceiling table was applied, module-wide `skippable%`, named-only `skippable%`, which metric actually bound the cap, count of unstable shared types, and any module that failed to build
 - **top three actionable fixes**, each with:
   - the concrete change ("add `key = { it.id }` to `items(...)` in `feed/FeedList.kt:42`")
   - file path(s) and line numbers — the same ones listed in the report's Prioritized Fixes
   - one official doc URL from `references/canonical-sources.md`
-  - expected impact ("unlocks skipping for `FeedItem`, should move `skippable%` from 79% → ~90%")
+  - expected impact that matches the active ceiling table: on SSM-off, frame it in terms of named-only `skippable%` / unstable-param reductions; on SSM-on, frame it in terms of removing instance-recreation churn, fixing expensive / broken `equals()`, or clearing the binding cap
 - whether a `material-3` audit is worth running next
 
 The top-three fixes in the chat summary MUST be the same items as the report's `Prioritized Fixes` list (same file paths, same doc links). Do not add generic advice in chat that isn't in the written report.

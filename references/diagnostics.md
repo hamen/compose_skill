@@ -156,7 +156,11 @@ android {
 
 ## 5. Strong Skipping Mode Confirmation
 
-Strong Skipping is on by default at Kotlin 2.0.20+. Below that, stability matters more aggressively and the rubric should weight unstable-param findings higher.
+Determine Strong Skipping **per scored module**, not just once for the whole repo:
+
+- Kotlin **2.0.20+** / Compose Compiler **1.5.4+**: Strong Skipping is **ON by default** unless the module explicitly opts out.
+- Older Kotlin / compiler tracks: Strong Skipping is **OFF by default** unless the module explicitly opts in via `-Pandroidx.compose.compiler.enableStrongSkippingMode=true` or the equivalent `freeCompilerArgs` flag.
+- If different modules disagree, record `Strong Skipping: mixed` in the report and name which modules ran with which table. When one overall Performance score covers both module types, explain the module mix and use the most conservative cap that the evidence supports.
 
 **Reference:** <https://developer.android.com/develop/ui/compose/performance/stability/strongskipping>
 
@@ -167,16 +171,24 @@ rg -n 'kotlin\s*=\s*"' -g '*.toml'
 rg -n 'org\.jetbrains\.kotlin' -g '*.gradle*'
 ```
 
-If the project explicitly opts a module *out* of Strong Skipping, look for `enableStrongSkippingMode = false` in any `composeCompiler { ... }` block — flag and require justification.
+Then look for explicit Strong Skipping overrides:
+
+```bash
+rg -n 'enableStrongSkippingMode|androidx\.compose\.compiler\.enableStrongSkippingMode|StrongSkipping' -g '*.gradle*' -g '*.properties'
+```
+
+- On Kotlin **2.0.20+**, treat Strong Skipping as ON unless a module explicitly sets `enableStrongSkippingMode = false` (or the equivalent flag). Flag opt-outs and require justification.
+- On older Kotlin tracks, treat Strong Skipping as OFF unless a module explicitly opts in. If you see an opt-in flag, apply the SSM-on rubric only to the affected modules.
 
 ## 6. Quick Triage Recipe
 
 When you arrive at a Compose repo, run these in order before scoring:
 
 1. `rg -n 'androidx\.compose' -g '*.gradle*' -g '*.toml'` — confirm Compose presence (fast-fail).
-2. `rg -n 'kotlin\s*=\s*"' -g '*.toml'` — record Kotlin version (Strong Skipping baseline).
-3. `rg -n 'isMinifyEnabled' -g '*.gradle*'` — release hygiene.
-4. Run Step 4 of SKILL.md — the init script generates compiler reports automatically. If the build fails, read any existing `composeCompiler { reportsDestination ... }` output the project already produces; otherwise note the fallback in the report.
-5. `rg -l 'baselineProfile|ProfileInstaller' -g '*.gradle*' -g '*.kt'` — baseline-profile presence.
+2. `rg -n 'kotlin\s*=\s*"' -g '*.toml'` and `rg -n 'org\.jetbrains\.kotlin' -g '*.gradle*'` — record Kotlin version (Strong Skipping baseline).
+3. `rg -n 'enableStrongSkippingMode|androidx\.compose\.compiler\.enableStrongSkippingMode|StrongSkipping' -g '*.gradle*' -g '*.properties'` — explicit Strong Skipping opt-ins / opt-outs; note the module path for each hit.
+4. `rg -n 'isMinifyEnabled' -g '*.gradle*'` — release hygiene.
+5. Run Step 4 of SKILL.md — the init script generates compiler reports automatically. If the build fails, read any existing `composeCompiler { reportsDestination ... }` output the project already produces; otherwise note the fallback in the report.
+6. `rg -l 'baselineProfile|ProfileInstaller' -g '*.gradle*' -g '*.kt'` — baseline-profile presence.
 
-These five greps tell you what kind of evidence is available before any rubric-level reading.
+These six checks tell you what kind of evidence is available before any rubric-level reading.

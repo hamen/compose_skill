@@ -78,7 +78,7 @@ Reward:
 - deferred reads via lambda modifiers (`Modifier.offset { … }`, `Modifier.graphicsLayer { … }`, `Modifier.drawBehind { … }`) → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices), [phases](https://developer.android.com/develop/ui/compose/performance/phases)
 - absence of backwards writes (writing to state that has already been read in the same composition) → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - stability hygiene: `@Stable` / `@Immutable` on data classes used as composable params → [docs](https://developer.android.com/develop/ui/compose/performance/stability)
-- `kotlinx.collections.immutable` (`ImmutableList`, `PersistentList`) for collection params (when Strong Skipping is disabled, or to prevent re-instantiation churn when enabled) → [stability](https://developer.android.com/develop/ui/compose/performance/stability), [fix](https://developer.android.com/develop/ui/compose/performance/stability/fix)
+- `kotlinx.collections.immutable` (`ImmutableList`, `PersistentList`) for collection params — earns a skip when Strong Skipping is off, and under Strong Skipping still pays off via stable `equals()` / `hashCode()` (making the instance-equality check cheap and correct) and structural sharing (no per-recomposition `List.copy()`). Reward independently of the compiler track → [stability](https://developer.android.com/develop/ui/compose/performance/stability), [fix](https://developer.android.com/develop/ui/compose/performance/stability/fix)
 - `compose_compiler_config.conf` used to mark third-party types stable → [fix](https://developer.android.com/develop/ui/compose/performance/stability/fix)
 - typed state factories (`mutableIntStateOf`, `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`) for primitives instead of boxed `mutableStateOf<Int>` → [state](https://developer.android.com/develop/ui/compose/state)
 - `@ReadOnlyComposable` / `@NonRestartableComposable` used deliberately on hot-path helpers → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
@@ -100,7 +100,9 @@ Deduct for:
 - frequent-state values passed to non-lambda modifiers when a layout/draw-phase alternative exists → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - backwards writes — writing to state already read in the same composition body → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - repeated broad recomposition smells across screens/components → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
-- raw `List`/`Map`/`Set` parameters on widely reused composables when the rest of the codebase has the immutable-collections dependency available (Only deduct if Strong Skipping is OFF, or if the list instance is actively recreated and causing recomposition churn) → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
+- raw `List`/`Map`/`Set` parameters on widely reused composables when the rest of the codebase has the immutable-collections dependency available — deduct when Strong Skipping is OFF (unstable params block skipping outright), or when Strong Skipping is ON but the collection is rebuilt per recomposition in source (e.g. `listOf(a, b)` / `mapOf(...)` in a composable body, a getter that allocates, or `.toList()` / `.filter { }` on every call). Under Strong Skipping without observable churn, do not deduct → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
+- unstable composable params whose `equals()` is expensive, allocating, or semantically broken — for example, a plain `class Foo(...)` with identity equality passed to a reusable composable, a `data class` wrapping a large collection (deep `equals` on every recomposition), or a `data class` with mutable fields (stale skip results). Under Strong Skipping, every recomposition runs `equals()` on each unstable param to decide whether to skip; expensive equality can make "skipping" as costly as recomposing, and broken equality makes skipping silently wrong → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping), [stability](https://developer.android.com/develop/ui/compose/performance/stability)
+- instance-recreation churn in source: `listOf(...)` / `mapOf(...)` / `setOf(...)` / anonymous object or lambda literals / `MyParams(...)` allocated inside a hot composable body and passed as a param. The value is `!=` to the prior recomposition's value by default, so both vanilla skipping and Strong Skipping's `==` gate fail, forcing the callee to re-run body-and-children. Hoist into `remember(...)`, a state holder, or a `@Composable` caller further up → [stability](https://developer.android.com/develop/ui/compose/performance/stability), [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
 - `mutableStateOf<Int|Long|Float|Double>` where the typed factory exists (autoboxing) → [state](https://developer.android.com/develop/ui/compose/state)
 - `derivedStateOf { ... }` whose block does not actually read any `State` object (meaning it will never invalidate, and the overhead of `derivedStateOf` is wasted) → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `@NonSkippableComposable` / `@DontMemoize` opt-outs without a justifying comment → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping)
@@ -129,17 +131,40 @@ Compiler reports generated in Step 4 give hard numbers. When present, apply thes
 Let `skippable%` = `skippableComposables / restartableComposables` from `*-module.json`.
 However, because zero-argument lambdas structurally cannot skip and artificially anchor this overall metric, you MUST also compute the **named-only `skippable%`** from `*-composables.csv` (by filtering out rows where `isLambda == "1"`). Use this **named-only percentage** for the ceiling conditions below, and state the distinction clearly in the report.
 
-*Note on Strong Skipping:* If Strong Skipping is enabled (default in Kotlin 2.0.20+), all restartable composables become skippable regardless of unstable parameters, and lambdas are automatically memoized. When Strong Skipping is active, **ignore the "unstable classes" conditions** in the table below—base the ceiling entirely on `skippable%` and qualitative checks (like whether those unstable instances are needlessly recreated).
+**Before applying a table, determine whether Strong Skipping is active** (Kotlin **2.0.20+** / Compose Compiler **1.5.4+** is the default; earlier versions can opt in via `-Pandroidx.compose.compiler.enableStrongSkippingMode=true` or the equivalent `freeCompilerArgs` flag). This choice changes which table applies, because Strong Skipping fundamentally changes what `skippable%` and the unstable-classes count are worth.
+
+##### When Strong Skipping is OFF (pre-2.0.20 or explicitly disabled)
+
+Unstable params genuinely block skipping, so both `skippable%` and the unstable-classes count are meaningful signals.
 
 | Condition | Ceiling |
 |-----------|---------|
-| `skippable%` ≥ 95% and zero unstable classes used as shared/reusable composable params | no cap (9-10 possible) |
-| `skippable%` ≥ 85% and ≤3 unstable classes used as shared/reusable composable params | cap at 8 |
-| `skippable%` 70-85% or 4-7 unstable classes used as params | cap at 6 |
-| `skippable%` 50-70% or ≥8 unstable classes used as params | cap at 4 |
+| `skippable%` ≥ 95% AND zero unstable classes used as shared/reusable composable params | no cap (9-10 possible) |
+| `skippable%` ≥ 85% AND ≤3 unstable classes used as shared/reusable composable params | cap at 8 |
+| `skippable%` 70-85% OR 4-7 unstable classes used as params | cap at 6 |
+| `skippable%` 50-70% OR ≥8 unstable classes used as params | cap at 4 |
 | `skippable%` < 50% | cap at 3 |
 | Strong Skipping disabled on a Kotlin 2.0.20+ project without written justification | cap at 4 |
 | `@NonSkippableComposable` / `@DontMemoize` used on hot-path composables without justification | cap at 5 |
+
+##### When Strong Skipping is ON (Kotlin 2.0.20+ default)
+
+Under Strong Skipping, all restartable composables become skippable and lambdas are auto-memoized; skipping is decided per-recomposition via `==` on unstable params. `skippable%` therefore trends toward ~100% almost by construction and loses most of its discriminating power — so the ceiling leans more heavily on qualitative evidence. The unstable-classes *count* also stops mattering on its own; what matters is whether those unstable params are (a) re-allocated per recomposition, or (b) backed by expensive or broken `equals()`.
+
+| Condition | Ceiling |
+|-----------|---------|
+| Named-only `skippable%` ≥ 95% AND no observed instance-recreation churn AND no expensive / broken `equals()` on unstable params AND no unjustified `@NonSkippableComposable` / `@DontMemoize` | no cap (9-10 possible) |
+| Named-only `skippable%` ≥ 95% BUT a handful of unstable params are recreated per recomposition OR carry non-trivial `equals()` cost | cap at 8 |
+| Widespread instance-recreation churn in source (e.g. `listOf(...)` / `mapOf(...)` / anonymous literals in hot composable bodies), OR expensive / broken `equals()` on unstable params passed through widely reused composables | cap at 6 |
+| Named-only `skippable%` < 90% despite Strong Skipping being on (typically: `@NonSkippableComposable` / `@DontMemoize` spread across hot paths, inline/value-class edge cases, or compiler-rejected composable shapes) | cap at 4 |
+| `@NonSkippableComposable` / `@DontMemoize` used on hot-path composables without justification | cap at 5 |
+
+Under Strong Skipping the more informative evidence is no longer "how many unstable classes are there" but:
+
+- **Instance-recreation churn in source** — `listOf(a, b)`, `mapOf(...)`, `{ ... }` object / lambda literals, or `MyParams(a, b)` allocated inside a composable body and passed as a param. The SSM `==` check fails on every recomposition and the callee re-runs regardless of skippability.
+- **`equals()` cost and correctness on unstable params** — SSM calls `equals()` on each unstable param every recomposition. Expensive equality (`data class` wrapping a large collection, custom `equals` that walks a graph) can make skipping as costly as recomposing; broken equality (identity equality on a plain `class`, mutable fields inside a `data class`) makes skipping silently wrong.
+- **Runtime recomposition counts** (Layout Inspector, `Recomposer` debug output, Compose UI tests with `Modifier.testTag` + recomposition counters). When available these beat `skippable%` as the primary signal under SSM.
+- **`@NonSkippableComposable` / `@DontMemoize` opt-outs** — effectively the only way to see a "not skippable" named composable under SSM; each instance should carry a justifying comment and appear on hot paths only with cause.
 
 When compiler reports are **not** available (Step 4 failed, `Compiler diagnostics used: no`), ceilings do not apply — rely on source-inferred judgment, but cap any Performance score at 7 to reflect reduced confidence.
 
