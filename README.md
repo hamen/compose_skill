@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.2 · released 2026-04-22**
+**Version 1.3 · released 2026-04-22**
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,17 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## Changelog
+
+### 1.3 — 2026-04-22
+
+**Added — Cursor plugin support.**
+
+Same-day follow-up to `1.2`. Cursor's plugin system is structurally identical to Claude Code's (hidden manifest directory, single-skill plugins auto-discover a root-level `SKILL.md`), so shipping a sidecar manifest was essentially free — and it unblocks org admins who want to import the skill into their team marketplace via Cursor's GitHub-import flow.
+
+- **New file**: `.cursor-plugin/plugin.json` at the repo root. Same metadata as the Claude Code manifest (name, version, description, author, repository, license, keywords). The `skills` field is intentionally omitted so Cursor treats the repo as a single-skill plugin and auto-discovers `SKILL.md` at the root — matching the documented default behaviour.
+- **Install docs**: the README Install section is restructured around harnesses (Claude Code / Cursor / manual symlink) rather than recommended-vs-fallback. Each path is clearly labelled with what it does and does not unlock today.
+- **Not submitted to Cursor Marketplace (yet)**. The manifest is a prerequisite for submission and for team-marketplace imports, but no public Marketplace listing was created in this release. Individual Cursor users should continue with the symlink install until that changes.
+- **Version alignment**: `.claude-plugin/plugin.json` bumped to `1.3.0` to match. Both plugin manifests and `SKILL.md` now read the same version string.
 
 ### 1.2 — 2026-04-22
 
@@ -123,7 +134,7 @@ The report lists every occurrence with file path and line number, not just the c
 
 ## Install
 
-### Claude Code (recommended)
+### Claude Code
 
 Install directly from the Git repository — no cloning, no symlinking:
 
@@ -133,9 +144,16 @@ Install directly from the Git repository — no cloning, no symlinking:
 
 Claude Code reads `.claude-plugin/plugin.json` and registers `SKILL.md` automatically. Updates arrive via the normal plugin update flow.
 
-### Manual install / Cursor
+### Cursor
 
-Use this if you're on Cursor, on an older Claude Code version that doesn't support `/plugin add`, or you want `git pull` to update the skill in place. Symlink the repo into your agent's skills directory:
+The repo ships a `.cursor-plugin/plugin.json` manifest, so Cursor sees it as a valid single-skill plugin. There are two install paths today:
+
+- **Team Marketplace (orgs)**: a workspace admin can import this GitHub repository into a team marketplace. The manifest is what makes that import succeed.
+- **Manual symlink (individuals)**: use the manual install block below. Individual Cursor users do not have a `/plugin add`-style command for arbitrary Git URLs yet; symlink install remains the practical path until this skill is published to the public Cursor Marketplace.
+
+### Manual install (all harnesses)
+
+Use this on Cursor, on older Claude Code versions without `/plugin add`, or whenever you want `git pull` in this directory to update the skill in place:
 
 ```bash
 # Claude Code
