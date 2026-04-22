@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.1.1 · released 2026-04-21**
+**Version 1.2 · released 2026-04-22**
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,16 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## Changelog
+
+### 1.2 — 2026-04-22
+
+**Added — Claude Code plugin support.**
+
+The skill now ships a `.claude-plugin/plugin.json` manifest, so Claude Code users can install it directly from the Git URL via `/plugin add hamen/compose_skill` instead of cloning and symlinking by hand. Nothing else about the skill changed — same rubric, same categories, same report template.
+
+- **New file**: `.claude-plugin/plugin.json` at the repo root. Declares the skill name, version, repository, license, and keywords, and points Claude Code at the existing `SKILL.md` via `"skills": "./"`. Purely additive — no existing files were restructured.
+- **README install section rewritten**: Claude Code plugin install is now the primary path. The previous symlink flow is kept verbatim as a **Manual install / Cursor** fallback for Cursor users and for older Claude Code versions that don't yet support the plugin system.
+- **Why now**: tracks [android/skills#7](https://github.com/android/skills/issues/7) (47 👍 at time of writing) — install friction was the single biggest piece of community feedback on the Agent Skills install story. Same bottleneck applied here; same fix.
 
 ### 1.1.1 — 2026-04-21
 
@@ -113,7 +123,19 @@ The report lists every occurrence with file path and line number, not just the c
 
 ## Install
 
-Symlink the repo into your skills directory so `git pull` updates it everywhere:
+### Claude Code (recommended)
+
+Install directly from the Git repository — no cloning, no symlinking:
+
+```
+/plugin add hamen/compose_skill
+```
+
+Claude Code reads `.claude-plugin/plugin.json` and registers `SKILL.md` automatically. Updates arrive via the normal plugin update flow.
+
+### Manual install / Cursor
+
+Use this if you're on Cursor, on an older Claude Code version that doesn't support `/plugin add`, or you want `git pull` to update the skill in place. Symlink the repo into your agent's skills directory:
 
 ```bash
 # Claude Code

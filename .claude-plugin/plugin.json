@@ -1,0 +1,20 @@
+{
+  "name": "jetpack-compose-audit",
+  "version": "1.2.0",
+  "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score, per-category 0-10 scores, and a COMPOSE-AUDIT-REPORT.md with every deduction cited against developer.android.com.",
+  "author": {
+    "name": "Ivan Morgillo"
+  },
+  "repository": "https://github.com/hamen/compose_skill",
+  "license": "MIT",
+  "keywords": [
+    "android",
+    "jetpack-compose",
+    "audit",
+    "performance",
+    "compose-compiler",
+    "strong-skipping",
+    "stability"
+  ],
+  "skills": "./"
+}
