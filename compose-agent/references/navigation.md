@@ -41,7 +41,7 @@ Core shifts from Nav2:
 - **Back stack is plain state.** `backStack.add(key)` to push, `backStack.removeLastOrNull()` to pop. No `NavController.navigate(route)`.
 - **Destinations are `@Serializable` data classes / objects** that implement `NavKey`. Arguments are class fields. No string interpolation.
 - **Transitions, predictive back, and scenes are first-class.** The `Scene` strategies (`SinglePaneSceneStrategy`, `ListDetailSceneStrategy`, etc.) decide which entries to show together on a given window size.
-- **Entries have their own lifecycle.** Each entry is a `SavedStateRegistryOwner` and `ViewModelStoreOwner`, same as Nav2.
+- **Entries are decorated with owners and state support.** `NavDisplay` includes `rememberSaveableStateHolderNavEntryDecorator()` by default so `rememberSaveable` works inside entries. Per-entry `ViewModelStoreOwner` is added explicitly with `rememberViewModelStoreNavEntryDecorator()` from `androidx.lifecycle:lifecycle-viewmodel-navigation3`.
 
 ### Guardrails For Nav3
 
@@ -49,6 +49,7 @@ Core shifts from Nav2:
 - Pass domain values as **fields of the destination**, not captured by callbacks. Captured values lose process-death safety.
 - Do not put `@Composable` functions or lambdas inside destination data. Destinations must be serializable.
 - For navigating from a ViewModel, expose a `Channel<NavEvent>` or `Flow<NavEvent>` and collect it from a `LaunchedEffect` in the route — do **not** inject `backStack` into the ViewModel.
+- If an entry calls `viewModel()` and you want it scoped to that `NavEntry`, add `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator.
 - Use `entryProvider { ... }` to map destination type → composable. Each entry accepts the key so you can read its fields.
 
 ### Predictive Back

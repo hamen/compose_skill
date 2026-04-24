@@ -47,7 +47,7 @@ fun Parent() {
     MiddleRow(countProvider = { count })
 }
 @Composable fun MiddleRow(countProvider: () -> Int) { Row { Child(countProvider) } }
-@Composable fun Child(countProvider: () -> Int) { Text("$countProvider()") }
+@Composable fun Child(countProvider: () -> Int) { Text("${countProvider()}") }
 ```
 
 ## Defer Reads As Long As Possible
@@ -66,7 +66,7 @@ Modifier.alpha(alpha)                  // composition
 Modifier.graphicsLayer { this.alpha = alpha } // draw-phase read
 ```
 
-Same idea for `padding`, `rotate`, `scale`. If the value is changing on every frame (animation, scroll), use the lambda form.
+Same idea for `rotate` and `scale` via `graphicsLayer`. `padding` does **not** have a lambda-form overload in Compose today, so animated padding still reads in composition and remeasures layout. If the effect is really positional motion, prefer `offset` / `graphicsLayer` when that is visually equivalent.
 
 ## Lazy Lists Need Keys
 
@@ -102,8 +102,8 @@ Same for `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`. Th
 
 ## Avoid `remember` Pitfalls That Leak
 
-- `remember { mutableStateOf(expensiveFn()) }` calls `expensiveFn()` on every recomposition. `mutableStateOf` is not lazy. Use `remember { mutableStateOf(expensiveFn()) }` only when `expensiveFn` is cheap; otherwise wrap: `remember { mutableStateOf(null) }.also { if (it.value == null) it.value = expensiveFn() }` — or hoist into the ViewModel, which is usually the real answer.
-- `remember { scope.launch { ... } }` does not cancel on disposal. Use `rememberCoroutineScope().launch` from an event or `LaunchedEffect` for composition-driven work.
+- `remember { expensiveFn() }` and `remember { mutableStateOf(expensiveFn()) }` run `expensiveFn()` during the first composition, then reuse the remembered result until the call leaves composition or its keys change. That is correct for a pure calculation you want to cache. The real bugs are doing I/O there, or seeding mutable state from changing inputs without keys. If the value depends on inputs, key it: `remember(input) { expensiveFn(input) }`. If it is app/data state, move it to the ViewModel or a state holder.
+- Do **not** launch coroutines from `remember { ... }`. `remember` caches values; `LaunchedEffect` is for composition-driven work, and `rememberCoroutineScope().launch` is for event-driven work.
 
 ## Lambdas In Composables
 
@@ -123,7 +123,7 @@ Anti-patterns to flag:
 - `file.readText()`, network calls, DB queries directly in a composable body.
 - Heavy `list.filter { ... }.sortedBy { ... }.groupBy { ... }` chains inside a composable. Move to the ViewModel, or wrap in `remember(input)` if genuinely UI-local.
 - `LocalConfiguration.current.screenWidthDp` / `LocalDensity.current.density` read inside a hot loop. Read once, pass the computed value.
-- `stringResource(R.string.x, dynamicArg)` — fine, but allocates a new string every recomposition. If `dynamicArg` is stable, you can `remember(dynamicArg) { stringResource(...) }` — often not worth it, but worth knowing.
+- `stringResource(R.string.x, dynamicArg)` — normally fine to call directly. If something around it is expensive, cache the **pure computation** that produces `dynamicArg`, then call `stringResource(...)` with the cached result. Do not move `stringResource(...)` itself inside a `remember` lambda.
 
 ## Animations
 

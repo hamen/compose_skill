@@ -136,7 +136,7 @@ Channels are hot and buffered — events fired while no collector is attached ar
 - **`MutableStateFlow(...)` field on the ViewModel exposed publicly.** Expose `StateFlow` via `asStateFlow()`.
 - **Collecting a flow by launching inside a composable body**: `scope.launch { flow.collect { state = it } }`. Use `collectAsStateWithLifecycle()`.
 - **Leaking `ViewModel` from a child composable into a `by viewModels()` call.** ViewModel instantiation belongs on the route composable only (see `references/state.md`).
-- **Emitting from `suspend fun` directly into a Compose state write**: `_state.emit(...)` can happen off main if the coroutine dispatcher is not main — not a bug per se, but prefer `.value = ...` which is main-thread-confined and cheaper.
+- **Choosing `_state.emit(...)` vs `_state.value = ...` for the wrong reason.** `MutableStateFlow.value` is thread-safe; it is not "main-thread-confined". Prefer `.value = ...` for straightforward synchronous state updates, `emit(...)` when you are implementing a suspending `FlowCollector` API, and `update { ... }` when the next value depends on the current one.
 - **`launchIn` on the UI scope.** Works, but harder to read than `collect { ... }` inside a `LaunchedEffect`. Prefer the explicit form.
 
 ## Primary Sources

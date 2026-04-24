@@ -103,7 +103,12 @@ fun Checkbox(
     // ...
 ) {
     var checked by rememberSaveable { mutableStateOf(initiallyChecked) }
-    Checkbox(checked = checked, onCheckedChange = { checked = it }, modifier, enabled)
+    Checkbox(
+        checked = checked,
+        onCheckedChange = { checked = it },
+        modifier = modifier,
+        enabled = enabled,
+    )
 }
 ```
 

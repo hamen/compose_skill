@@ -180,12 +180,18 @@ fun ProfileContent(state: ProfileState, onAction: (ProfileAction) -> Unit) { ...
 
 ## Snapshot Lists And Maps
 
-For collections that grow or shrink in the UI:
+For collections that are **mutated in place** in the UI:
 
 - `mutableStateListOf<T>()` / `mutableStateMapOf<K, V>()` from `androidx.compose.runtime`.
 - These are observable. Mutations trigger recomposition of the specific readers.
 
-Do **not** wrap `listOf(...)` / `mutableListOf(...)` in `mutableStateOf(...)`. Every change requires reassigning the outer `MutableState<List<T>>`, which usually gets done with `value = value + element` — a fresh list every time. Snapshot collections avoid the churn.
+If your state holder already exposes an immutable `List<T>` and replaces the whole list on update (`StateFlow<List<T>>`, `MutableState<List<T>>`, reducer-style state objects), that is also a valid shape. The real bug is hiding a mutable `ArrayList` / `mutableListOf(...)` inside state and then mutating it without changing the observed container — Compose will not see those internal mutations.
+
+So:
+
+- Use snapshot collections when the UI needs in-place mutation.
+- Use immutable list replacement when your architecture already models state as whole-value updates.
+- Avoid `mutableStateOf(mutableListOf(...))` unless you always replace the outer state after every change.
 
 ## Primary Sources
 

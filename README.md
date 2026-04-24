@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.4 · released 2026-04-24** — now shipping a sibling `compose-agent` skill for writing modern Compose, plus a dark-mode correctness heuristic proven on a real app.
+**Version 1.4.1 · released 2026-04-24** — documentation-correctness follow-up for the new `compose-agent`, fixing a handful of same-day reference mistakes before broader release.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,19 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## Changelog
+
+### 1.4.1 — 2026-04-24
+
+**Fixed — `compose-agent` documentation correctness.**
+
+This is a same-day follow-up to `1.4`. The new sibling skill shipped useful guidance, but a few reference notes were too absolute or technically wrong. `1.4.1` tightens those sections against the current official Android and Kotlin docs so the skill stops teaching bad fixes in authoring mode.
+
+- **Performance reference corrected.** `remember` semantics now match the docs: the calculation runs during the first composition, then again only when the call leaves composition or its keys change. The bogus `remember { stringResource(...) }` suggestion is gone, the nonexistent "lambda-form padding" recommendation is gone, and the sample state-reader lambda now compiles.
+- **Concurrency reference corrected.** `MutableStateFlow.value` is no longer described as main-thread-confined. The guidance now reflects the official thread-safe semantics and frames `.value`, `emit(...)`, and `update { ... }` by API shape rather than folklore.
+- **State reference softened.** Snapshot lists/maps are still recommended for in-place UI mutations, but immutable list replacement via `StateFlow<List<T>>` / `MutableState<List<T>>` is now called out as equally valid architecture.
+- **Navigation 3 reference corrected.** Saveable state and NavEntry-scoped `ViewModel`s are now described in terms of `NavEntryDecorator` setup, matching current `NavDisplay` defaults and the `rememberViewModelStoreNavEntryDecorator()` add-on.
+- **Custom modifier example fixed.** The zero-parameter `ModifierNodeElement` sample now uses the singleton/no-parameter pattern from the docs, and the stateful `Checkbox` convenience example now compiles.
+- **Version bumps.** The audit skill manifests now read `1.4.1`; the sibling `compose-agent` manifests now read `1.0.1`.
 
 ### 1.4 — 2026-04-24
 

@@ -70,7 +70,7 @@ LLMs frequently invert 1 and 2, or put `clickable` after `padding` so the paddin
 See `references/performance.md`. Short version:
 
 - `Modifier.offset(x = xDp)` → reads in composition. Use `Modifier.offset { IntOffset(...) }` for animated / scroll-driven values.
-- `Modifier.padding(horizontal = dynamicDp)` → same rule, use `Modifier.padding { ... }` in the rare cases where you are animating padding.
+- `Modifier.padding(horizontal = dynamicDp)` → there is **no** lambda-form `padding` overload today. Animated padding will still read in composition and trigger remeasure; keep the scope tight, or prefer `offset` / `graphicsLayer` when the effect is really motion rather than layout.
 - `Modifier.alpha(a)` → use `Modifier.graphicsLayer { this.alpha = a }` when `a` is animated.
 - `Modifier.rotate(r)` → `Modifier.graphicsLayer { rotationZ = r }`.
 - `Modifier.scale(s)` → `Modifier.graphicsLayer { scaleX = s; scaleY = s }`.
@@ -89,11 +89,9 @@ fun Modifier.rainbowBorder(): Modifier = composed {
 }
 
 // Preferred — Modifier.Node
-class RainbowBorderElement : ModifierNodeElement<RainbowBorderNode>() {
+data object RainbowBorderElement : ModifierNodeElement<RainbowBorderNode>() {
     override fun create() = RainbowBorderNode()
     override fun update(node: RainbowBorderNode) { /* reconfigure */ }
-    override fun hashCode(): Int = 0
-    override fun equals(other: Any?): Boolean = other === this
 }
 
 class RainbowBorderNode : Modifier.Node(), DrawModifierNode {
@@ -108,7 +106,8 @@ fun Modifier.rainbowBorder(): Modifier = this then RainbowBorderElement()
 Rules:
 
 - For new custom modifiers, use `Modifier.Node` and its delegates (`DrawModifierNode`, `LayoutModifierNode`, `PointerInputModifierNode`, etc.).
-- Use `composed { }` **only** when you need a composable context inside the modifier (e.g. read a `CompositionLocal` that has no non-composable access path). Prefer passing the value into the modifier as a parameter instead.
+- If you are only combining existing modifiers, write a plain modifier factory. Reach for `Modifier.Node` when you need custom behavior or long-lived modifier state.
+- Avoid `Modifier.composed { }` unless you truly need composition-time behavior inside the modifier and cannot express it as a plain factory or a `Modifier.Node`.
 - Never return a `Modifier.composed { remember { ... } }` where `remember` is only caching an object — allocate in the element class instead.
 
 ## Chaining And Reuse
