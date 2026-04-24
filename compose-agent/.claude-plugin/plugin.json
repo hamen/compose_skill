@@ -1,0 +1,20 @@
+{
+  "name": "compose-agent",
+  "version": "1.0.0",
+  "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, and idiomatic Kotlin. Targets the mistakes LLMs actually make in Compose code.",
+  "author": {
+    "name": "Ivan Morgillo"
+  },
+  "repository": "https://github.com/hamen/compose_skill",
+  "license": "MIT",
+  "keywords": [
+    "android",
+    "jetpack-compose",
+    "kotlin",
+    "coroutines",
+    "navigation-3",
+    "agent-skill",
+    "best-practices"
+  ],
+  "skills": "./"
+}

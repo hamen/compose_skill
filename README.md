@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.3 · released 2026-04-22**
+**Version 1.4 · released 2026-04-24** — now shipping a sibling `compose-agent` skill for writing modern Compose, plus a dark-mode correctness heuristic proven on a real app.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,33 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## Changelog
+
+### 1.4 — 2026-04-24
+
+**Added — `compose-agent` sibling skill.** An agent skill that helps AI coding assistants write modern Jetpack Compose.
+
+Where `jetpack-compose-audit` scores your whole repo end-to-end, `compose-agent` works at file and feature scope while you are reading, writing, or modifying Compose. It targets the mistakes LLMs actually make. Built as a response to [android/skills#27](https://github.com/android/skills/issues/27) — the Android equivalent of [SwiftUI Pro](https://github.com/twostraws/swiftui-agent-skill).
+
+- **Short `SKILL.md` that routes to nine focused reference files** — `api`, `state`, `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `kotlin`. Only the reference relevant to the current task is pulled into context.
+- **Two modes, no config.** Review mode: "check this file" returns a file-by-file report with before/after snippets and official doc links. Authoring mode: six silent guardrails run on every new composable before the code comes back (`modifier` param, state hoisting, lazy keys, effect placement, lifecycle-aware collection, parameter order).
+- **Scoped reviews save tokens.** `compose-agent focus on state` loads only `state.md` — roughly a tenth of a full review. Same for `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `api`, `kotlin`.
+- **Install side by side** with the audit skill: `/plugin add hamen/compose_skill --subdir compose-agent`. Cursor and manual-symlink paths are documented in the new "Sibling skill" section of this README.
+
+**Proven on a real app.** Dogfooded against `kindle-gratis-compose` before shipping. In one review of three files it caught:
+
+- A `Random.nextInt()` called in an `@Composable` body — every recomposition picked a new placeholder URL and re-requested the image.
+- `Color.Black` text laid over a blended `colorScheme.primary` + `colorScheme.surface` background — unreadable in dark mode. Light-mode tests do not catch this.
+- A `DisposableEffect` + `LifecycleEventObserver` for an `ON_START` refresh — should be `LifecycleStartEffect` from lifecycle-runtime-compose 2.8+. Half the code, same behavior.
+- Five composables with `modifier` either missing or positioned before required data (AndroidX component guideline violation).
+- Hardcoded English strings in `contentDescription` / `onClickLabel` where the rest of the file already used `stringResource`.
+
+Every finding came with a file:line, a before/after, and a link to the official AndroidX or `developer.android.com` page behind the rule. Top-three prioritized summary at the end.
+
+**Added — dark-mode contrast heuristic** (driven by the dogfood run above). Hard-coded foreground colors (`Color.Black`, `Color.White`, raw ARGB literals) over theme-derived backgrounds (`colorScheme.*` or blends thereof) are now flagged as a dark-mode regression risk. Documented in `compose-agent/references/component-api.md` with a "Dark Mode Correctness" section, grep triggers, and a fix pattern that reads color from the matching `on*` role.
+
+**Added — `LifecycleStartEffect` / `LifecycleResumeEffect` guidance.** The lifecycle-runtime-compose 2.8+ APIs replace the verbose `DisposableEffect` + `LifecycleEventObserver` pattern. Covered in `compose-agent/references/effects.md` as a first-class side-effect option and in `references/api.md` as a soft-deprecation flag. The old idiom is pervasive in LLM-generated Compose code — exactly the kind of post-training-cutoff API the skill exists to teach.
+
+**No change to the audit skill rubric.** `jetpack-compose-audit` behavior, categories, scoring, and report format are identical to `1.3`. This release is purely additive. Run the audit once per release; run `compose-agent` every day.
 
 ### 1.3 — 2026-04-22
 
@@ -242,7 +269,7 @@ Top 3 fixes
 ## Layout
 
 ```
-SKILL.md                         main skill manifest (process, principles, output)
+SKILL.md                         main audit skill (process, principles, output)
 scripts/
   compose-reports.init.gradle    Gradle init script injected via --init-script
 references/
@@ -253,6 +280,8 @@ references/
   diagnostics.md                 manual-mode fallback snippets
 ```
 
+A sibling skill, `compose-agent/`, ships in the same repo — see [§ Sibling skill](#sibling-skill--compose-agent) for its own layout and usage.
+
 ---
 
 ## Philosophy
@@ -261,6 +290,107 @@ references/
 - **Measured beats inferred.** Compiler reports are generated automatically; source-inferred stability is a fallback, not the default.
 - **Written for action.** The report's `Prioritized Fixes` section and the chat summary mirror each other, so the developer can act on the chat alone.
 - **Narrow scope on purpose.** The skill does not score design, accessibility, or build performance in v1. It says so rather than pretending otherwise.
+
+---
+
+## Sibling skill — `compose-agent`
+
+This repo ships a second skill alongside the audit: [`compose-agent/`](./compose-agent/). Where the audit **reviews an existing repo** end-to-end and produces a score, `compose-agent` works at **file and feature scope** while you are reading, writing, or modifying Compose.
+
+- **Responds to:** "is this right?", "rewrite this the modern way", "check this file for deprecated API", "find state hoisting mistakes in this feature".
+- **Built for:** [android/skills#27](https://github.com/android/skills/issues/27) — the Android equivalent of [`swiftui-agent-skill`](https://github.com/twostraws/swiftui-agent-skill). The philosophy is the same: target the mistakes LLMs actually make in Compose, not repeat basics the model already knows.
+- **Shape:** short `SKILL.md` that routes to nine per-topic reference markdowns. You only pay the token cost for the areas your current task touches.
+
+### Install
+
+Same flow as the audit skill, pointing at the subdirectory.
+
+**Claude Code:**
+
+```
+/plugin add hamen/compose_skill --subdir compose-agent
+```
+
+**Cursor:** import the repo as a plugin and pick `compose-agent` in the subdirectory selector.
+
+**Manual:** symlink `compose-agent/` into your skills directory (`~/.claude/skills/compose-agent`, `~/.cursor/skills/compose-agent`, etc.).
+
+Both skills can live side by side — they do not share state and do not interfere.
+
+### Use it — the two modes
+
+`compose-agent` runs in **review mode** or **authoring mode**. You do not choose; the skill picks based on your request.
+
+**Review mode** — you hand it code that already exists. It produces a file-by-file report with before/after snippets and links to the official doc page behind each rule. Triggered by prompts like:
+
+```
+Use compose-agent to review feature/profile/.
+Check ProfileScreen.kt with compose-agent.
+compose-agent: find deprecated API in this module.
+```
+
+**Authoring mode** — the skill is loaded and you ask the assistant to *write* Compose. Before returning code, the assistant silently runs six checks against the rules in the skill:
+
+1. Does the composable take `modifier: Modifier = Modifier`?
+2. Is state hoisted, or is there a clear reason to own it here?
+3. If it renders a list, does it use a stable `key =`?
+4. If it launches work, is that work in a `LaunchedEffect`, `produceState`, or the ViewModel — not in the composition body?
+5. If it collects a `Flow`, is it `collectAsStateWithLifecycle()`?
+6. Is the parameter order data → `modifier` → other → content slot last?
+
+Any "no" without a reason → fixed before the code comes back. No extra prompt needed — loading the skill is enough.
+
+### Scoped reviews (the token-saver)
+
+The nine reference files are deliberately loadable in isolation. Scoping a review to one area pulls only that reference into context — a focused review costs roughly a tenth of a full one.
+
+| You want… | Say |
+|---|---|
+| state correctness (hoisting, `remember`, saveable, ViewModel) | `compose-agent focus on state` |
+| side-effect choice (`LaunchedEffect`, `DisposableEffect`, `produceState`) | `compose-agent focus on effects` |
+| recomposition cost + Strong Skipping | `compose-agent focus on performance` |
+| modifier hygiene | `compose-agent focus on modifiers` |
+| Navigation 3 adoption or Nav2.8 type-safety | `compose-agent focus on navigation` |
+| `Flow` collection + lifecycle + coroutine scopes | `compose-agent focus on concurrency` |
+| reusable composable API shape | `compose-agent focus on component-api` |
+| deprecated / soft-deprecated APIs | `compose-agent focus on api` |
+| idiomatic Kotlin / Android style | `compose-agent focus on kotlin` |
+
+### What review mode gives back
+
+- **File-by-file findings.** File + line, rule name, minimal before/after, link to `developer.android.com` or the AndroidX guidelines.
+- **Prioritized summary of up to three items**, highest impact first. Act on the chat alone if you are short on time.
+- **No nitpicks.** Clean files are not listed.
+
+An example output block is in [`compose-agent/SKILL.md`](./compose-agent/SKILL.md) under "Example Output".
+
+### `compose-agent` vs `jetpack-compose-audit`
+
+| Use `compose-agent`… | Use `jetpack-compose-audit`… |
+|---|---|
+| while writing or editing a file | for a snapshot of the whole repo |
+| for doc-linked fixes on a specific concern | for a 0–100 score across four categories |
+| to make the assistant's output *be* correct Compose | to produce a `COMPOSE-AUDIT-REPORT.md` with measured evidence |
+| day to day, at file / feature scope | once per release or before a review |
+
+Overlap is fine. Audit on the release candidate, `compose-agent` on every feature branch.
+
+### Layout
+
+```
+compose-agent/
+  SKILL.md                       short router — loads references on demand
+  references/
+    api.md                       deprecated + soft-deprecated APIs → modern replacements
+    state.md                     hoisting, remember, rememberSaveable, ViewModel boundary
+    effects.md                   LaunchedEffect / DisposableEffect / produceState / snapshotFlow
+    performance.md               Strong Skipping, lambda modifiers, lazy keys, typed state
+    modifiers.md                 order, lambda form, Modifier.Node vs composed { }
+    navigation.md                Navigation 3 + Nav2.8 type-safe destinations
+    concurrency.md               Flow collection + lifecycle, viewModelScope, dispatchers
+    component-api.md             parameter order, slots, naming, state hoisting shape
+    kotlin.md                    Kotlin conventions + Android Kotlin style the LLM misses
+```
 
 ---
 
