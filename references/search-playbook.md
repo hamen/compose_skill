@@ -180,7 +180,7 @@ Scoring implications — decide once, apply consistently through the report:
 - `ViewModel`
 - `viewModel\(` — log invocation depth (screen entry vs. deep tree)
 - `mutableStateOf` / `mutableIntStateOf` etc. declared as members of a class extending `ViewModel` (not inside a composable)
-- `Channel<` / `receiveAsFlow\(\)` / `consumeAsFlow\(\)` exposed from a `ViewModel` for UI events
+- `Channel<` / `SharedFlow<` / `receiveAsFlow\(\)` / `consumeAsFlow\(\)` exposed from a `ViewModel` for UI events — verify whether the outcome should instead be durable UI state
 - `\.stateIn\s*\(` — positive signal; check for `WhileSubscribed(5_000)` or similar timeout
 - `rememberSaveable` invoked inside a `Lazy(Column|Row|VerticalGrid|HorizontalGrid|VerticalStaggeredGrid|HorizontalStaggeredGrid)` item factory
 

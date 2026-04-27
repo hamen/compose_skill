@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle']"
 metadata:
   author: Ivan Morgillo
-  version: "1.0.1"
+  version: "1.1.0"
 ---
 
 # Compose Agent
@@ -31,8 +31,9 @@ If the repo pins older versions, match the repo — but call out what the modern
 5. Review **modifier usage** — ordering, lambda-form, `Modifier.Node` over `composed { }` — using `references/modifiers.md`.
 6. Review **navigation** using `references/navigation.md`.
 7. Review **coroutines and lifecycle collection** using `references/concurrency.md`.
-8. Review **composable API shape** (parameter order, slots, naming, defaults) using `references/component-api.md`.
-9. Final **Kotlin style** pass using `references/kotlin.md`.
+8. Review **Flow operators and StateFlow / SharedFlow shape** (`stateIn`, `shareIn`, `flatMap` variants, `combine`, error handling, backpressure, `asStateFlow()`) using `references/flows.md`.
+9. Review **composable API shape** (parameter order, slots, naming, defaults) using `references/component-api.md`.
+10. Final **Kotlin style** pass using `references/kotlin.md`.
 
 If doing a partial review, load only the relevant reference files — each references file is designed to be read in isolation.
 
@@ -156,6 +157,7 @@ If the user needs any of the above, narrow the scope and say so.
 - `references/modifiers.md` — modifier ordering, lambda form, `Modifier.Node` over `composed { }`.
 - `references/navigation.md` — Navigation 3 (and what to replace from Navigation 2).
 - `references/concurrency.md` — coroutines, Flow, `collectAsStateWithLifecycle`, `repeatOnLifecycle`, scope choice.
+- `references/flows.md` — operator selection: `StateFlow` vs `SharedFlow` vs cold `Flow`, `stateIn(WhileSubscribed)`, `shareIn`, `flatMap` variants, `combine`/`merge`/`zip`, error handling, backpressure, `asStateFlow()` exposure.
 - `references/component-api.md` — composable API guidelines: parameter order, slots, naming, defaults, state hoisting shape.
 - `references/kotlin.md` — Kotlin coding conventions and Android Kotlin style the LLM keeps missing.
 

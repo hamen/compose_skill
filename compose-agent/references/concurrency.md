@@ -80,9 +80,13 @@ Guardrails:
 
 ## One-Shot Events From ViewModel To UI
 
-Events that must fire once (snackbar, navigation command, toast) are not state. Do not model them as `StateFlow<Event?>` with manual nulling — races are easy, re-emission on configuration change is awkward.
+Do not model events as `StateFlow<Event?>` with manual nulling — races are easy, and re-emission on configuration change is awkward. First decide whether the event must survive lifecycle gaps:
 
-Prefer a `Channel<Event>` plus `receiveAsFlow()`:
+- If the UI must eventually render or acknowledge it (snackbar message, validation result, navigation decision), model it as UI state and clear it after the UI reports that it was handled. This matches Android's UI events guidance.
+- If it is an ephemeral, single-collector signal where loss during cancellation is acceptable, use a `Channel<Event>` plus `receiveAsFlow()`.
+- If multiple collectors must observe the same signal, use `MutableSharedFlow` / `SharedFlow` and configure replay/buffering deliberately.
+
+Ephemeral `Channel` shape:
 
 ```kotlin
 // ViewModel
@@ -107,9 +111,11 @@ LaunchedEffect(Unit) {
 }
 ```
 
-Channels are hot and buffered — events fired while no collector is attached are buffered up to `Channel.BUFFERED` slots by default.
+Channels are hot and buffered — events sent while no collector is attached are buffered up to `Channel.BUFFERED` slots by default. They are still not durable state: `receiveAsFlow()` fans out to collectors, and an element can be lost if a collector is cancelled after receiving it but before processing it. Use state for must-deliver UI outcomes.
 
 ## Flow Transformations
+
+For deeper Flow operator selection (cold vs hot, `flatMap` variants, `combine`/`merge`/`zip`, error handling, backpressure, `asStateFlow()` exposure), see `flows.md`. The notes here are the minimum a lifecycle-focused review needs.
 
 - Prefer `stateIn(...)` when converting a cold flow into a `StateFlow` for the ViewModel's public API, with `SharingStarted.WhileSubscribed(5_000)` as the default start strategy — keeps the upstream alive for 5 seconds across config changes but tears it down when nobody is watching.
 - Use `flatMapLatest` for search-style queries where a new input invalidates the previous flow.
