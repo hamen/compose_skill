@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.5.0 · released 2026-04-27** — new `compose-agent` reference doc covering Flow operator selection (`stateIn`, `shareIn`, `flatMap` variants, `combine`, error handling, backpressure, `asStateFlow()` exposure). Closes a gap raised by [android/skills#27](https://github.com/android/skills/issues/27).
+**Version 1.5.0 · released 2026-04-27** — Flow operator and event-stream guidance for `compose-agent`, verified against the official Kotlin coroutines and Android UI-events docs. Closes the Flow gap raised by [android/skills#27](https://github.com/android/skills/issues/27).
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -14,28 +14,20 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 
 ### 1.5.0 — 2026-04-27
 
-**Added — `compose-agent/references/flows.md`.** A dedicated reference for Flow operator selection and `StateFlow` / `SharedFlow` shape. `concurrency.md` was a strong lifecycle / scope / dispatcher guide but only one-line touched on operators — and operator misuse is one of the most consistent LLM failure modes in Android coroutine code. `flows.md` is the operator counterpart; the two read together.
+**Added — Flow operator reference.** `compose-agent/references/flows.md` is the missing counterpart to `concurrency.md`: lifecycle, scopes, and dispatchers stay in `concurrency.md`; operator choice and exposed Flow shape now live in `flows.md`.
 
-Triggered by [android/skills#27](https://github.com/android/skills/issues/27), which proposed an Android/Compose skill covering "Compose, Coroutines, Navigation 3, Flow effectively." Compose, Coroutines, and Navigation 3 were already covered by `compose-agent`; "Flow effectively" was the gap. Material 3 stays out of scope by design — both skill manifests defer theming to the sibling [`material-3`](https://github.com/hamen/material-3-skill) skill, and that decision is unchanged here.
+This release closes the "Flow effectively" gap from [android/skills#27](https://github.com/android/skills/issues/27). Compose, Coroutines, and Navigation 3 were already covered by `compose-agent`; Flow operator selection was the weak spot.
 
-What `flows.md` covers:
+What changed:
 
-- **`StateFlow` vs `SharedFlow` vs cold `Flow`** — a decision table for which type to expose, with the reasoning that lands LLMs on the right one (continuously-valid state → `StateFlow`; replayable events → `SharedFlow`; described work → cold `Flow`).
-- **`stateIn(WhileSubscribed(5_000))`** — the default ViewModel pattern, why 5 seconds, when `Eagerly` / `Lazily` / `WhileSubscribed(0)` are correct, why `initialValue` matters, and why the suspending `stateIn(scope)` overload is not the ViewModel property-initializer shape.
-- **`shareIn` and `MutableSharedFlow`** — when a hot `SharedFlow` is the right pick, why `shareIn` buffering is configured with upstream `buffer(...)` / `conflate()`, and why `MutableSharedFlow` constructor knobs must not be confused with `shareIn` parameters.
-- **`flatMap` variants** — `flatMapLatest` (cancel previous, search-as-you-type), `flatMapMerge` (concurrent), `flatMapConcat` (sequential). Cancellation semantics laid out as a table.
-- **`combine`, `merge`, `zip`** — what each emits and the "screen stuck on loading because one input never emitted" `combine` trap.
-- **`distinctUntilChanged`, `debounce`, `sample`, and click throttling** — UX-shaped rate limiters, including the explicit note that `kotlinx.coroutines.flow` does not ship `throttleLatest` / `throttleFirst`.
-- **`catch`, `retry`, `retryWhen`, `onCompletion`** — where each one belongs in a pipeline, why `retry` on a hot flow is a no-op, and exponential-backoff via `retryWhen`.
-- **Backpressure: `buffer`, `conflate`, `collectLatest`** — when the producer outruns the collector and which trade-off each operator picks.
-- **`asStateFlow()` / `receiveAsFlow()` exposure pattern** — the `_state` private + public read-only projection idiom that prevents the most common ViewModel API mistake.
-- **Common LLM Mistakes** — exposing `MutableStateFlow`, omitting `initialValue` / `started`, bare `flatMap` where `flatMapLatest` was needed, `combine` waiting forever, `catch` placed before risky operators, `retry` on hot flows, `launchIn` on UI scopes.
+- **Flow shape decisions.** Clear guidance for `StateFlow` vs `SharedFlow` vs cold `Flow`, including when UI outcomes should be durable state instead of ephemeral events.
+- **`stateIn` / `shareIn` correctness.** ViewModel state uses `stateIn(scope, started, initialValue)` with `WhileSubscribed(5_000)` as the default recommendation. `shareIn` is documented with its real API shape: `scope`, `started`, and `replay`; buffering belongs upstream via `buffer(...)` / `conflate()`, not as nonexistent `shareIn` parameters.
+- **Operator selection.** Covers `flatMapLatest` / `flatMapMerge` / `flatMapConcat`, `combine` / `merge` / `zip`, `catch` / `retry` / `retryWhen` / `onCompletion`, and backpressure via `buffer`, `conflate`, and `collectLatest`.
+- **Nonexistent APIs called out.** The reference explicitly says `kotlinx.coroutines.flow` does not ship `throttleLatest` / `throttleFirst`; agents should not invent imports for them.
+- **Mutable vs read-only exposure.** Reinforces `asStateFlow()`, `asSharedFlow()`, and `receiveAsFlow()` so agents do not expose mutable primitives or call `tryEmit` on read-only `SharedFlow`.
+- **Audit wording tightened.** Scoring categories, weights, and report format are unchanged, but the state-management rubric now follows Android's UI-events guidance: model must-deliver UI outcomes as state with acknowledgement; reserve `Channel` / `SharedFlow` for ephemeral signals with documented delivery semantics.
 
-**Wiring.** Added as Review Process step 8 in `compose-agent/SKILL.md`, between concurrency (step 7) and composable API (step 9). `concurrency.md`'s `Flow Transformations` section gains a one-line pointer to `flows.md` so the lifecycle and operator references stay consistent without duplicating content.
-
-**Version bumps.** Audit skill manifests now read `1.5.0`; sibling `compose-agent` manifests now read `1.1.0`. Both `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` follow.
-
-**Audit rubric wording tightened.** Scoring categories, weights, and report format are unchanged, but the state-management rubric no longer claims `Channel<UiEvent>` drops whenever no collector is active. It now points reviewers to Android's UI-events guidance: model must-deliver UI outcomes as state with acknowledgement; reserve `Channel` / `SharedFlow` for ephemeral signals with documented delivery semantics.
+**Wiring.** Added as Review Process step 8 in `compose-agent/SKILL.md`, between concurrency and composable API review. The README, layout docs, scoped-review table, and both Claude/Cursor plugin manifests were updated for the `1.5.0` / `1.1.0` release.
 
 ### 1.4.1 — 2026-04-24
 
