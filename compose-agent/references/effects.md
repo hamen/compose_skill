@@ -17,6 +17,16 @@ This is the single largest category of LLM-generated Compose bugs.
 | launch a coroutine in response to a user event (click, drag, etc.) | `rememberCoroutineScope()` + `scope.launch { ... }` |
 | use a callback inside a long-lived effect while keeping the latest version | `rememberUpdatedState(callback)` |
 
+## The Keying Rule (Recap)
+
+Same rule covers `LaunchedEffect`, `DisposableEffect`, `produceState`, `remember`, and the setup of a remembered `derivedStateOf`. Every changing value the effect or producer reads must be either:
+
+1. listed in the key arguments,
+2. intentionally fixed for the call-site lifetime (constant, stable owned object, initial-value capture), or
+3. read through `rememberUpdatedState(value)` when the effect should keep running but observe the latest value.
+
+Anything else captures stale values silently — the effect calls a yesterday-callback, the producer keeps subscribing to the wrong id, the listener fires into a closed-over old lambda. The full rule with examples lives in `state.md` under "The Keying Rule" — apply it identically here.
+
 ## `LaunchedEffect` — The Default Effect
 
 ```kotlin
@@ -33,7 +43,7 @@ Rules:
 - The **keys** control restart. Change them → the current coroutine is cancelled and the block runs again.
 - Use `LaunchedEffect(Unit)` only for genuinely one-shot work (log a screen view once, launch an initial animation). Never as a quick fix for "I want it to run on every recomposition" — that is a recomposition bug, not an effect pattern.
 - If you catch yourself passing `key = coroutineScope` or similar as a key, you are doing it wrong. Keys are the inputs whose change should restart the work.
-- Do **not** `LaunchedEffect(someFlow) { someFlow.collect { ... } }`. Prefer `LaunchedEffect(Unit) { someFlow.collect { ... } }` if you truly need a coroutine, or (much more often) expose the flow as state and call `collectAsStateWithLifecycle`.
+- Do **not** collect flows manually when the goal is "render this value"; expose the flow as state and call `collectAsStateWithLifecycle`. If you truly need a coroutine for events, key the effect on the changing flow identity: `LaunchedEffect(events) { events.collect { ... } }`. Use `LaunchedEffect(Unit)` only when the flow object is intentionally stable for the call-site lifetime.
 
 **LLM tell:** using `LaunchedEffect` to read state that only gets read, not written to — that is a recomposition, not an effect.
 
@@ -133,6 +143,7 @@ Rules:
 - `produceState` launches a coroutine scoped to composition. Cancel-awareness is automatic.
 - For callback-based producers, use `awaitDispose { ... }` inside to unregister on leave.
 - Do not use `produceState` when the source is already a `StateFlow` — collect it with `collectAsStateWithLifecycle` instead.
+- Apply the keying rule. Every changing value the producer block reads must be a `produceState` key (`url`, `loader` above), or be wrapped with `rememberUpdatedState` if the producer must keep running across changes. A `produceState(initialValue) { ... }` with no extra keys but a body that reads parameters is the same stale-capture bug as a `LaunchedEffect(Unit)` reading a parameter.
 
 ## `snapshotFlow` — Compose State → `Flow<T>`
 

@@ -124,6 +124,7 @@ Anti-patterns to flag:
 - Heavy `list.filter { ... }.sortedBy { ... }.groupBy { ... }` chains inside a composable. Move to the ViewModel, or wrap in `remember(input)` if genuinely UI-local.
 - `LocalConfiguration.current.screenWidthDp` / `LocalDensity.current.density` read inside a hot loop. Read once, pass the computed value.
 - `stringResource(R.string.x, dynamicArg)` — normally fine to call directly. If something around it is expensive, cache the **pure computation** that produces `dynamicArg`, then call `stringResource(...)` with the cached result. Do not move `stringResource(...)` itself inside a `remember` lambda.
+- **Flow operator chains constructed in the composable body.** `combine(...)`, `flatMapLatest { ... }`, `debounce(...)`, `stateIn(...)`, `shareIn(...)` written inline are rebuilt on every composition unless wrapped in `remember(...)` with the right keys — and even when correctly remembered, the data shape lives in the wrong layer. Move pipeline construction into a presenter / state holder / ViewModel; have the UI consume one coherent `StateFlow<UiState>`. See `flows.md` → "Flow Operators Belong Outside The Composable Body".
 
 ## Animations
 

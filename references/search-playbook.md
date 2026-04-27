@@ -206,6 +206,30 @@ Scoring implications — decide once, apply consistently through the report:
 - lifecycle-aware collection of flows in Android UI
 - plain state-holder classes for larger screens or app shells
 
+### Flow-Misuse-In-UI Heuristic
+
+Flow operators belong in presenters / state holders / ViewModels, not composable bodies. Pipelines constructed in a `@Composable` are rebuilt on every composition unless wrapped in `remember(...)` with correct keys, and even then put data shaping in the render layer (see `compose-agent/references/flows.md` → "Flow Operators Belong Outside The Composable Body").
+
+Two-step audit:
+
+1. List files that mix Compose with Flow construction:
+   `rg -l '@Composable' -g '*.kt' | xargs -r rg -l 'combine\(|merge\(|zip\(|flatMapLatest|flatMapMerge|flatMapConcat|stateIn\(|shareIn\(|debounce\(|sample\(|buffer\(|conflate\(|collectLatest|MutableStateFlow|MutableSharedFlow|Channel\b'`
+2. For each hit, decide whether the operator is inside a composable body or a class member / top-level helper. Flag a deduction when:
+   - shaping operator chains (`combine`, `merge`, `flatMapLatest`, `flatMapMerge`, `debounce`, `sample`, `buffer`, `conflate`) are constructed inside an `@Composable` body — move to the presenter
+   - terminal collection (`collectLatest`, `collect`) happens directly in a composable body; collection inside a correctly keyed `LaunchedEffect(...)` for ephemeral events is acceptable
+   - `stateIn(...)` / `shareIn(...)` are started from a composition-scoped scope (`rememberCoroutineScope()`, inside `LaunchedEffect`) — pipeline is torn down on disposal and restarted on next entry
+   - `MutableStateFlow` / `MutableSharedFlow` / `Channel` are constructed inside a composable rather than owned by a state holder / ViewModel
+   - `MutableStateFlow` / `MutableSharedFlow` / `Channel` are exposed publicly from a ViewModel without `asStateFlow()` / `asSharedFlow()` / `receiveAsFlow()` narrowing
+   - `MutableSharedFlow<UiEvent>` (replay-0) is used for outcomes that must not be lost across STOPPED — payment results, deletion confirmations, save success. Convert to durable state with an `onConsumed` callback.
+   - `zip(...)` is used to build screen state, or `combine(...)` is used with cold inputs that may never emit — combined flow gets stuck on `initialValue`
+   - `flatMapMerge` is used where `flatMapLatest` should cancel the previous in-flight work (search-as-you-type, route changes, user-id swaps)
+
+Positive signals to reward:
+
+- a single `StateFlow<UiState>` per screen, exposed via `private val _state = MutableStateFlow(...); val state = _state.asStateFlow()` and constructed via `combine(...).stateIn(viewModelScope, WhileSubscribed(5_000), initial)` inside a presenter / ViewModel
+- composables reading that state with `viewModel.state.collectAsStateWithLifecycle()` and otherwise free of operator chains
+- `Channel<Event>` private, exposed as `Flow<Event>` via `receiveAsFlow()`, used only for genuinely ephemeral UI commands
+
 ## 5. Side Effects Checks
 
 ### Search For

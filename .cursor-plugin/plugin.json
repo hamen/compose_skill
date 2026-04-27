@@ -1,6 +1,6 @@
 {
   "name": "jetpack-compose-audit",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score, per-category 0-10 scores, and a COMPOSE-AUDIT-REPORT.md with every deduction cited against developer.android.com.",
   "author": {
     "name": "Ivan Morgillo"

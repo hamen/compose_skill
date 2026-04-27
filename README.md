@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 1.5.0 · released 2026-04-27** — Flow operator and event-stream guidance for `compose-agent`, verified against the official Kotlin coroutines and Android UI-events docs. Closes the Flow gap raised by [android/skills#27](https://github.com/android/skills/issues/27).
+**Version 1.5.1 · released 2026-04-27** — Patch release tightening Flow, event-stream, and effect-keying guidance for `compose-agent`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,17 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## Changelog
+
+### 1.5.1 — 2026-04-27
+
+**Fixed — Flow guidance consistency.**
+
+This patch keeps the `1.5` Flow reference intact, but tightens the wording so agents do not learn two subtly different rules from adjacent sections.
+
+- **Must-deliver outcomes stay durable.** The `StateFlow` / `SharedFlow` decision table no longer lists in-app purchase results as generic one-shot events. Payment, deletion, save, and similar outcomes that must not be lost are consistently described as durable UI state with an acknowledgement callback.
+- **Effect collection keys clarified.** Manual event collection now says to key `LaunchedEffect` on the changing flow identity, and to use `LaunchedEffect(Unit)` only when the flow object is intentionally stable for the call-site lifetime.
+- **Search heuristic softened.** `collectLatest` is no longer grouped with Flow-shaping operators that automatically belong in presenters. Terminal collection directly in a composable body is still a smell; collection inside a correctly keyed `LaunchedEffect(...)` for ephemeral events is explicitly acceptable.
+- **Audit command safer on Linux.** The Flow-misuse search pipeline now uses `xargs -r` so an empty composable-file list does not accidentally run the second search across the whole repo.
 
 ### 1.5.0 — 2026-04-27
 
