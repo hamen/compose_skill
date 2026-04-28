@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "compose_skill",
+  "description": "Agent skills for Jetpack Compose development — coding assistant + audit tool",
+  "owner": {
+    "name": "Ivan Morgillo"
+  },
+  "plugins": [
+    {
+      "name": "compose-agent",
+      "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, and idiomatic Kotlin.",
+      "author": { "name": "Ivan Morgillo" },
+      "category": "development",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/hamen/compose_skill.git",
+        "path": "compose-agent"
+      },
+      "tags": ["android", "jetpack-compose", "kotlin", "agent-skill"]
+    },
+    {
+      "name": "jetpack-compose-audit",
+      "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score with every deduction cited against developer.android.com.",
+      "author": { "name": "Ivan Morgillo" },
+      "category": "development",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/hamen/compose_skill.git",
+        "path": "jetpack-compose-audit"
+      },
+      "tags": ["android", "jetpack-compose", "audit", "performance"]
+    }
+  ]
+}
