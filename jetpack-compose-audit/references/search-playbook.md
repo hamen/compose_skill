@@ -208,7 +208,7 @@ Scoring implications — decide once, apply consistently through the report:
 
 ### Flow-Misuse-In-UI Heuristic
 
-Flow operators belong in presenters / state holders / ViewModels, not composable bodies. Pipelines constructed in a `@Composable` are rebuilt on every composition unless wrapped in `remember(...)` with correct keys, and even then put data shaping in the render layer (see `compose-agent/references/flows.md` → "Flow Operators Belong Outside The Composable Body").
+Flow operators belong in presenters / state holders / ViewModels, not composable bodies. Pipelines constructed in a `@Composable` are rebuilt on every composition unless wrapped in `remember(...)` with correct keys — and even when they're correctly remembered, the data layer is the wrong place for shaping logic. Two questions, separate answers: *where do you collect?* (the UI edge, via `collectAsStateWithLifecycle()` or a keyed `LaunchedEffect`) and *where do you shape?* (`combine`, `flatMapLatest`, `stateIn`, `debounce`, etc. — in a presenter / ViewModel, never inline in a composable). A composable with three or more Flow operator imports is doing presenter work.
 
 Two-step audit:
 

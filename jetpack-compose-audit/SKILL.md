@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 1.5.1 — released 2026-04-27. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 2.0.0 — released 2026-04-28. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
