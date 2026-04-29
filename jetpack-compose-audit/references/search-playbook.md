@@ -62,6 +62,9 @@ If Compose usage is sparse, state that clearly in the report and reduce confiden
 - deprecated/legacy APIs: `accompanist-pager`, `accompanist-swiperefresh`, `accompanist-flowlayout`, `accompanist-systemuicontroller`, `animateItemPlacement\(`
 - config-derived reads inside `remember {}`: `LocalConfiguration`, `LocalDensity`, `LocalLayoutDirection`
 - `\.indexOf\(|\.lastIndexOf\(|\.indexOfFirst\s*\{` inside lazy item factories
+- O(N) string work in composable bodies: `\.split\(`, `\.lines\(`, `\.lineSequence\(`, `\.trimIndent\(`, `\.replace\(`, `\.format\(`, `\.substringBefore`, `\.substringAfter` — flag any hit inside a `@Composable` body; trivially cheap reads (`\.size`, `\.length`, `\.isEmpty\(\)`, index access) are fine
+- inline regex compilation/execution: `Regex\(`, `\.toRegex\(`, `\.matches\(`, `\.find\(` — flag when the construction or call sits inside a composable body. Hoist the compiled `Regex` or move the matching upstream
+- O(N) collection aggregates in composable bodies: `\.count\s*\{`, `\.joinToString\(`, `\.mapIndexed\(`, `\.flatMap\(`, `\.sumOf\(`, `\.maxOf\(`, `\.minOf\(`, `\.fold\(`, `\.reduce\(` — flag in `@Composable` bodies, especially over collections whose size is unbounded
 - `Canvas\s*\(` and `Spacer\s*\(` — check each hit for an explicit `size` / `height` / `aspectRatio` on the modifier; bare `fillMaxSize()` on a drawing surface can enter draw with `Size.Zero`
 - animation APIs: `animate\w+AsState\b`, `updateTransition\b`, `rememberInfiniteTransition\b`, `Animatable\b`, `AnimatedVisibility\b`, `AnimatedContent\b`, `Crossfade\b`
 - animation-to-modifier hand-off: lines where `\.value\b` from an animated state (`animate\w+AsState`, `Animatable`, `updateTransition`) is passed to `Modifier.offset\(`, `Modifier.alpha\(`, `Modifier.rotate\(`, `Modifier.scale\(`, `Modifier.padding\(` — verify whether the lambda-form (`Modifier.offset { ... }`, `Modifier.graphicsLayer { ... }`) would defer the read to the layout/draw phase
@@ -250,10 +253,17 @@ Positive signals to reward:
 - string-based nav routes: `composable\(\s*"` and `navigate\(\s*"` (suggest type-safe `@Serializable` routes on Navigation Compose 2.8+)
 - `\.animateTo\s*\(` / `\.snapTo\s*\(` on `Animatable` instances — check each hit is inside a `LaunchedEffect(...)` (correct) or a gesture / event handler (acceptable), not the composition body
 - `rememberCoroutineScope\(\)` followed nearby by `\.launch\s*\{[^}]*animateTo` — likely a target-driven animation written imperatively; check whether `LaunchedEffect(target)` would express restart semantics more clearly
+- IO classes that should never appear in a composable body — flag any hit inside a `@Composable` function (Coil/Glide via their Compose integration APIs are the accepted carve-out):
+  - serialization: `Json\.`, `Gson`, `Moshi`, `ObjectMapper`, `Xml`, `Protobuf`, `\bCsv\b`
+  - network: `HttpClient`, `OkHttp`, `Retrofit`, `URL\(`, `Socket\(`
+  - filesystem: `File\(`, `Files\.`, `FileInputStream`, `BufferedReader`, `Paths\.get`
+  - database: `DriverManager`, `\bConnection\b`, `prepareStatement`, `executeQuery`
+  - subprocess: `ProcessBuilder`, `Runtime\.getRuntime`
 
 ### Red Flags To Verify
 
 - work started directly in composition body
+- **strictly forbidden IO in a composable body** — serialization, network, database, file/directory IO, or subprocess work. `remember` is **not** a valid fix: the cached body still runs on the composition thread on first composition and on every key change. Threading-aware image loaders (Coil's `AsyncImage` / `rememberAsyncImagePainter`, Glide's Compose API) are the explicit carve-out
 - navigation, snackbar, analytics, or repository calls triggered during composition instead of from an effect or event path
 - `navController.navigate(...)` invoked in composition body — must come from an event handler or `LaunchedEffect`
 - `LaunchedEffect(Unit)` / `LaunchedEffect(true)` is **not** suspicious on its own (the "run once" pattern is idiomatic). Only flag it when the body captures parameter or state values that may change without `rememberUpdatedState`

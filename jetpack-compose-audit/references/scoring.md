@@ -93,7 +93,7 @@ Reward:
 
 Deduct for:
 
-- collection transforms or expensive computation inside composable bodies without caching → [docs](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- non-trivial work in composable bodies — collection transforms (`filter` / `sortedBy` / `groupBy` / `sumOf`), O(N) string ops (`split`, `lines`, `lineSequence`, `replace`, `format`), `Regex(...)` constructed or executed inline, hashing or non-trivial constructors. **`remember` is not a sufficient fix**: the cached body still runs on the composition thread on first composition and on every key change, which is a frame hitch on screen entry. The correct fix is moving the work to a presenter / state holder / ViewModel. O(1) is not a free pass — object initialisation, lock acquisition, and side-effectful constructors can be expensive even when nominally constant-time → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices), [phases](https://developer.android.com/develop/ui/compose/performance/phases)
 - lazy list items without stable keys when identity/moves matter → [lists](https://developer.android.com/develop/ui/compose/lists)
 - heterogeneous lazy lists missing `contentType` → [lists](https://developer.android.com/develop/ui/compose/lists)
 - reading rapidly changing state too high in the tree → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
@@ -228,12 +228,14 @@ Reward:
 - `snapshotFlow { … }` collected from inside a `LaunchedEffect` for Compose-state → Flow conversions → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `rememberCoroutineScope()` used only for event-driven work (button taps, gesture handlers); long-lived/keyed work lives in `LaunchedEffect` → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - navigation, snackbar, analytics, and repository calls live in event handlers or `LaunchedEffect`, never in the composition body → [side-effects](https://developer.android.com/develop/ui/compose/side-effects), [navigation](https://developer.android.com/develop/ui/compose/navigation)
+- image loading delegated to threading-aware loaders (Coil, Glide) via their Compose integration APIs (`AsyncImage`, `rememberAsyncImagePainter`) — these manage the threading contract correctly and are the accepted carve-out from "no IO in composition" → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `Animatable.animateTo(...)` / `snapTo(...)` driven from a `LaunchedEffect(key)` so the animation cancels on key change and on composition exit → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - declarative targets use `animate*AsState` and leave coroutine management to Compose; manual `rememberCoroutineScope().launch { ... }` is reserved for event-driven or gesture-driven animation → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 
 Deduct for:
 
 - launching threads, coroutines, navigation, or external work directly in composition → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- **strictly forbidden IO in a composable body** — never appears in composition regardless of how it is wrapped (`remember` does not redeem it, since the work still runs on the composition thread on first composition and on every key change). Categories: serialization/deserialization (`Json.decodeFromString`, `Gson`, `Moshi`, `ObjectMapper`, XML/Protobuf/CSV); network access (`HttpClient`, `OkHttp`, `Retrofit`, `URL(...)`, `Socket`); database connections or queries (`DriverManager`, `Connection`, `prepareStatement`, `executeQuery`, raw Room/SQLite calls); file or directory IO (`File(...)`, `Files.*`, `FileInputStream`, `BufferedReader`); subprocess / process IO (`ProcessBuilder`, `Runtime.exec`). Threading-aware image loaders (Coil, Glide) used via their Compose integration APIs are the explicit carve-out → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - wrong effect API choice → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - incorrect or missing effect keys → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - stale captures in long-lived effects → [side-effects](https://developer.android.com/develop/ui/compose/side-effects)

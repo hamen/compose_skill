@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 2.0.0 · released 2026-04-28** — Breaking: `jetpack-compose-audit` moves into its own subdirectory so the repo passes the [agentskills.io](https://agentskills.io/) strict validator. Existing installs need `--subdir jetpack-compose-audit` on `/plugin add` to resume updates.
+**Version 2.0.1 · released 2026-04-29** — Sharper "no IO in composition" rule with concrete class enumeration, the `remember`-is-not-a-fix framing, and the Coil/Glide carve-out. `compose-agent` bumped to `1.1.2` for the matching authoring-mode update.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -12,30 +12,21 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 
 ## What's new
 
-### 2.0.0 — 2026-04-28
+### 2.0.1 — 2026-04-29
 
-**Breaking — install URL changed; repo restructured for [agentskills.io](https://agentskills.io/) compliance.**
+**Sharpened — "no IO in composition" rule, with concrete class enumeration.**
 
-Both skills in this repo now pass the strict [agentskills.io specification](https://agentskills.io/specification) validator with zero critical findings, audited against [the community validator skill](https://gist.github.com/kingargyle/37e279f27880e7a92253e5f7e7686720) raised in [android/skills#23](https://github.com/android/skills/issues/23). Getting there required moving the audit skill into its own `jetpack-compose-audit/` subdirectory so every skill folder name matches its declared `name`, and removing a cross-skill reference that traversed `..` between the two skills. The cost is a one-time install URL update for existing users.
+Both skills now name the IO categories that must never appear in a composable body — serialization (`Json.decodeFromString`, `Gson`, `Moshi`, `ObjectMapper`, XML/Protobuf/CSV), network (`HttpClient`, `OkHttp`, `Retrofit`, `URL`, `Socket`), database (`DriverManager`, `Connection`, `prepareStatement`, `executeQuery`), file/directory IO (`File(...)`, `Files.*`, `FileInputStream`, `BufferedReader`), and subprocess (`ProcessBuilder`, `Runtime.exec`). The accepted carve-out is image loading via threading-aware loaders (Coil's `AsyncImage` / `rememberAsyncImagePainter`, Glide's Compose API) — they manage the threading contract correctly.
 
-**Required action for existing installs.**
+The framing is now blunt: **`remember` is not a fix.** A `remember(key) { expensiveWork() }` still runs `expensiveWork()` on the composition thread on first composition and again on every key change, which is a frame hitch on screen entry. The only correct fix for non-trivial work is moving it to the presenter / state holder / ViewModel.
 
-```
-# Old (no longer works)
-/plugin add hamen/compose_skill
+What changed:
 
-# New
-/plugin add hamen/compose_skill --subdir jetpack-compose-audit
-```
-
-Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir jetpack-compose-audit` and updates resume normally.
-
-- **Repo restructure.** `SKILL.md`, `references/`, `scripts/`, `.claude-plugin/`, and `.cursor-plugin/` all moved from the repo root into `jetpack-compose-audit/`. Git tracked the moves as renames, so blame and history are preserved. No skill content changed.
-- **Cross-skill reference inlined.** `jetpack-compose-audit/references/search-playbook.md` previously linked into `compose-agent/references/flows.md` for the "Flow operators belong outside the composable body" rule — that pointer is replaced with the rule inlined directly. Both skills are now self-contained, with no parent-traversal references between them.
-- **Manual symlink instructions updated.** The README symlink target is now `$(pwd)/jetpack-compose-audit` instead of `$(pwd)`.
-- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
-
-**Why 2.0.0 and not 1.6.0.** The install URL change is breaking — users on the old URL silently stop receiving updates. Semver says that's a major bump, regardless of whether the rubric or report content moved. Actual audit behavior, scoring, categories, and report format are identical to `1.5.1`.
+- **`compose-agent/references/performance.md`**: rewrote the "Expensive Work In Composition" section. Added the explicit IO list with the Coil/Glide carve-out, the "`remember` is not the fix" warning, the "O(1) is not a free pass" note (object init, lock acquisition, side-effectful constructors), grep-friendly enumeration of O(N) string ops and inline-`Regex` constructions, and a "safe in composition" list so the agent does not over-flag cheap reads.
+- **`compose-agent/references/effects.md`**: added one Anti-Patterns bullet pointing at the new performance.md section so an agent reviewing effects encounters the rule.
+- **`jetpack-compose-audit/references/scoring.md`**: tightened the Performance "deduct for" line to name the work types and explicitly reject `remember` as a fix; added the IO-in-composition deduction to Side Effects with the canonical class list and a Coil/Glide reward in the same category.
+- **`jetpack-compose-audit/references/search-playbook.md`**: added grep patterns for inline `Regex(...)` / `.toRegex()` / `.matches()`, O(N) string ops (`split`, `lines`, `replace`, `format`, etc.), O(N) collection aggregates (`count {}`, `joinToString`, `flatMap`, `sumOf`, `fold`), and a per-category list of forbidden-IO class names so the agent has actionable leads.
+- **Versions.** `jetpack-compose-audit` → `2.0.1`. `compose-agent` → `1.1.2`. No install-URL change. No breaking change to scoring categories, weights, or report format.
 
 For older releases see the [full Changelog](#changelog) at the bottom of this README.
 
@@ -341,6 +332,31 @@ compose-agent/
 ---
 
 ## Changelog
+
+### 2.0.0 — 2026-04-28
+
+**Breaking — install URL changed; repo restructured for [agentskills.io](https://agentskills.io/) compliance.**
+
+Both skills in this repo now pass the strict [agentskills.io specification](https://agentskills.io/specification) validator with zero critical findings, audited against [the community validator skill](https://gist.github.com/kingargyle/37e279f27880e7a92253e5f7e7686720) raised in [android/skills#23](https://github.com/android/skills/issues/23). Getting there required moving the audit skill into its own `jetpack-compose-audit/` subdirectory so every skill folder name matches its declared `name`, and removing a cross-skill reference that traversed `..` between the two skills. The cost is a one-time install URL update for existing users.
+
+**Required action for existing installs.**
+
+```
+# Old (no longer works)
+/plugin add hamen/compose_skill
+
+# New
+/plugin add hamen/compose_skill --subdir jetpack-compose-audit
+```
+
+Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir jetpack-compose-audit` and updates resume normally.
+
+- **Repo restructure.** `SKILL.md`, `references/`, `scripts/`, `.claude-plugin/`, and `.cursor-plugin/` all moved from the repo root into `jetpack-compose-audit/`. Git tracked the moves as renames, so blame and history are preserved. No skill content changed.
+- **Cross-skill reference inlined.** `jetpack-compose-audit/references/search-playbook.md` previously linked into `compose-agent/references/flows.md` for the "Flow operators belong outside the composable body" rule — that pointer is replaced with the rule inlined directly. Both skills are now self-contained, with no parent-traversal references between them.
+- **Manual symlink instructions updated.** The README symlink target is now `$(pwd)/jetpack-compose-audit` instead of `$(pwd)`.
+- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
+
+**Why 2.0.0 and not 1.6.0.** The install URL change is breaking — users on the old URL silently stop receiving updates. Semver says that's a major bump, regardless of whether the rubric or report content moved. Actual audit behavior, scoring, categories, and report format are identical to `1.5.1`.
 
 ### 1.5.1 — 2026-04-27
 

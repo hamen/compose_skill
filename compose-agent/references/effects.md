@@ -234,6 +234,7 @@ For value-based animations (`animate*AsState`), no effect is needed at all — t
 
 - **Calling a suspend function directly in the composable body.** Does not compile, but LLMs sometimes wrap it in an IIFE or an `also { GlobalScope.launch { ... } }`. Both are wrong.
 - **`GlobalScope.launch`** anywhere in UI code. Use the composition's scope or the ViewModel's scope.
+- **IO in a composable body** — file, network, database, serialization, subprocess. Never belongs in composition, even wrapped in `remember`. Full list and the Coil/Glide carve-out live in `performance.md` → "Expensive Work In Composition".
 - **State mutation in a `@Composable` function body outside `remember`/`mutableStateOf`.** The read–write cycle causes invalidation storms ("backwards writes").
 - **Using `LaunchedEffect` where `collectAsStateWithLifecycle` suffices.** If the goal is "show this flow as state", do not open the flow manually.
 - **Nesting effects.** A `LaunchedEffect` inside another `LaunchedEffect` is almost always a sign the outer effect should have had different keys.

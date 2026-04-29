@@ -118,13 +118,21 @@ Two cases where manual remembering still matters:
 
 Composition runs often. Keep the body cheap.
 
+**`remember` is not the fix for non-trivial work.** `remember(key) { expensiveWork() }` caches the result, but `expensiveWork()` still runs on the composition thread on first composition and again whenever the key changes — that's a frame hitch on screen entry and on every key bump. For genuinely heavy work (parsing, scanning, regex compile, IO of any kind), the only correct fix is moving the work to the presenter / state holder / ViewModel so it runs off the hot path entirely. Use `remember(key)` only to cache the *result* of work that is genuinely cheap on first run.
+
+**O(1) is not a free pass either.** Object allocation with non-trivial initialization, `hashCode()` over a large structure, lock acquisition, and side-effectful constructors can be expensive even when the call is nominally constant-time. "It's just one call" is not a defence.
+
 Anti-patterns to flag:
 
-- `file.readText()`, network calls, DB queries directly in a composable body.
-- Heavy `list.filter { ... }.sortedBy { ... }.groupBy { ... }` chains inside a composable. Move to the ViewModel, or wrap in `remember(input)` if genuinely UI-local.
+- **IO in a composable body, full stop.** `file.readText()`, `Files.*`, `FileInputStream`, `BufferedReader`; `HttpClient`, `OkHttp`, `Retrofit`, `URL(...).readText()`, `Socket(...)`; `DriverManager`, `Connection`, `prepareStatement`, `executeQuery`; `ProcessBuilder`, `Runtime.exec`; serialization (`Json.decodeFromString`, `Gson`, `Moshi`, `ObjectMapper`, XML/Protobuf/CSV parsing). These never belong in composition regardless of `remember` wrapping. The one accepted exception is image loading via threading-aware loaders (Coil, Glide) used through their Compose integration APIs (`AsyncImage`, `rememberAsyncImagePainter`) — they manage the threading contract themselves.
+- Heavy `list.filter { ... }.sortedBy { ... }.groupBy { ... }` chains inside a composable. Move to the presenter / ViewModel.
+- O(N) string work — `split("\n")`, `lines()`, `lineSequence().count()`, `replace(...)`, `format(...)`, `substringAfter(...)` — proportional to input length. Compute upstream.
+- `Regex("...")` constructed inline, or `.toRegex()` / `.matches(...)` / `.find(...)` executed inline. Pattern compilation runs every recomposition. Hoist the compiled `Regex` or do the matching upstream.
 - `LocalConfiguration.current.screenWidthDp` / `LocalDensity.current.density` read inside a hot loop. Read once, pass the computed value.
 - `stringResource(R.string.x, dynamicArg)` — normally fine to call directly. If something around it is expensive, cache the **pure computation** that produces `dynamicArg`, then call `stringResource(...)` with the cached result. Do not move `stringResource(...)` itself inside a `remember` lambda.
 - **Flow operator chains constructed in the composable body.** `combine(...)`, `flatMapLatest { ... }`, `debounce(...)`, `stateIn(...)`, `shareIn(...)` written inline are rebuilt on every composition unless wrapped in `remember(...)` with the right keys — and even when correctly remembered, the data shape lives in the wrong layer. Move pipeline construction into a presenter / state holder / ViewModel; have the UI consume one coherent `StateFlow<UiState>`. See `flows.md` → "Flow Operators Belong Outside The Composable Body".
+
+Safe in composition: simple field reads (`.size`, `.length`, `.isEmpty()`, index access on small structures), comparisons, boolean checks, property reads on already-computed values, and normal small allocations (data classes, small literals).
 
 ## Animations
 
