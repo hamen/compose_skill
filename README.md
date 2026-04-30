@@ -121,6 +121,10 @@ Use this on Cursor, on older Claude Code versions without `/plugin add`, or when
 mkdir -p ~/.claude/skills
 ln -s "$(pwd)/jetpack-compose-audit" ~/.claude/skills/jetpack-compose-audit
 
+# Codex
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)" ~/.codex/skills/jetpack-compose-audit
+
 # Cursor
 mkdir -p ~/.cursor/skills
 ln -s "$(pwd)/jetpack-compose-audit" ~/.cursor/skills/jetpack-compose-audit
