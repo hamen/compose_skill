@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 2.0.1 · released 2026-04-29** — Sharper "no IO in composition" rule with concrete class enumeration, the `remember`-is-not-a-fix framing, and the Coil/Glide carve-out. `compose-agent` bumped to `1.1.2` for the matching authoring-mode update.
+**Version 2.1.0 · released 2026-05-12** — Added focused `compose-agent` references for UI testing, focus/keyboard navigation, and KMP/CMP boundaries. The audit now maps those surfaces as coverage notes and follow-up recommendations without changing the 0-100 scoring model.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -12,21 +12,15 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 
 ## What's new
 
-### 2.0.1 — 2026-04-29
+### 2.1.0 — 2026-05-12
 
-**Sharpened — "no IO in composition" rule, with concrete class enumeration.**
+**Added — coverage for three previously explicit blind spots.**
 
-Both skills now name the IO categories that must never appear in a composable body — serialization (`Json.decodeFromString`, `Gson`, `Moshi`, `ObjectMapper`, XML/Protobuf/CSV), network (`HttpClient`, `OkHttp`, `Retrofit`, `URL`, `Socket`), database (`DriverManager`, `Connection`, `prepareStatement`, `executeQuery`), file/directory IO (`File(...)`, `Files.*`, `FileInputStream`, `BufferedReader`), and subprocess (`ProcessBuilder`, `Runtime.exec`). The accepted carve-out is image loading via threading-aware loaders (Coil's `AsyncImage` / `rememberAsyncImagePainter`, Glide's Compose API) — they manage the threading contract correctly.
-
-The framing is now blunt: **`remember` is not a fix.** A `remember(key) { expensiveWork() }` still runs `expensiveWork()` on the composition thread on first composition and again on every key change, which is a frame hitch on screen entry. The only correct fix for non-trivial work is moving it to the presenter / state holder / ViewModel.
-
-What changed:
-
-- **`compose-agent/references/performance.md`**: rewrote the "Expensive Work In Composition" section. Added the explicit IO list with the Coil/Glide carve-out, the "`remember` is not the fix" warning, the "O(1) is not a free pass" note (object init, lock acquisition, side-effectful constructors), grep-friendly enumeration of O(N) string ops and inline-`Regex` constructions, and a "safe in composition" list so the agent does not over-flag cheap reads.
-- **`compose-agent/references/effects.md`**: added one Anti-Patterns bullet pointing at the new performance.md section so an agent reviewing effects encounters the rule.
-- **`jetpack-compose-audit/references/scoring.md`**: tightened the Performance "deduct for" line to name the work types and explicitly reject `remember` as a fix; added the IO-in-composition deduction to Side Effects with the canonical class list and a Coil/Glide reward in the same category.
-- **`jetpack-compose-audit/references/search-playbook.md`**: added grep patterns for inline `Regex(...)` / `.toRegex()` / `.matches()`, O(N) string ops (`split`, `lines`, `replace`, `format`, etc.), O(N) collection aggregates (`count {}`, `joinToString`, `flatMap`, `sumOf`, `fold`), and a per-category list of forbidden-IO class names so the agent has actionable leads.
-- **Versions.** `jetpack-compose-audit` → `2.0.1`. `compose-agent` → `1.1.2`. No install-URL change. No breaking change to scoring categories, weights, or report format.
+- **`compose-agent/references/testing.md`**: Compose UI test guidance for plain state-driven tests, semantics assertions, callback checks, screenshot tests, deterministic image/platform fakes, and previews.
+- **`compose-agent/references/focus.md`**: Focus and keyboard/D-pad navigation guidance for `FocusRequester`, `focusProperties`, key handlers, focus restoration, and focus tests.
+- **`compose-agent/references/kmp.md`**: Kotlin Multiplatform / Compose Multiplatform guidance for semantic common APIs, `expect` / `actual`, fakeable interfaces, platform leaf composables, and native interop boundaries.
+- **`jetpack-compose-audit`**: maps UI test, screenshot, focus/keyboard, and KMP/CMP surfaces as adjacent coverage notes. The four scored categories and weights remain unchanged; these areas become report notes and suggested follow-ups unless the same root cause clearly affects Performance, State, Side Effects, or Composable API Quality.
+- **Versions.** `jetpack-compose-audit` → `2.1.0`. `compose-agent` → `1.2.0`. No install-URL change. No breaking change to scoring categories, weights, or report format.
 
 For older releases see the [full Changelog](#changelog) at the bottom of this README.
 
@@ -78,8 +72,6 @@ Concrete smells the rubric targets, with realistic wins:
 | `Scaffold { innerPadding -> ... }` content that ignores `innerPadding` | Content stops drawing behind the `TopAppBar` / system bars |
 
 The report lists every occurrence with file path and line number, not just the category.
-
----
 
 ## What makes it different
 
@@ -193,9 +185,9 @@ Top 3 fixes
 
 - Material 3 compliance, theming, color/typography — defer to the `material-3` skill.
 - Accessibility scoring (semantics, touch targets) — flagged as notes, not scored.
-- UI test coverage and Compose test-rule patterns.
-- Compose Multiplatform (`expect`/`actual`, target-specific code paths).
-- Wear OS / TV / Auto / Glance surfaces.
+- UI test coverage and Compose test-rule patterns — noted as adjacent coverage, not scored.
+- Compose Multiplatform (`expect`/`actual`, target-specific code paths) — noted as adjacent coverage, not scored.
+- Wear OS / TV / Auto / Glance surfaces — focus/keyboard risks are noted as adjacent coverage; full platform review remains out of scope.
 - Build performance (incremental compilation, KSP/KAPT choice).
 
 ---
@@ -277,7 +269,7 @@ Any "no" without a reason → fixed before the code comes back. No extra prompt 
 
 ### Scoped reviews (the token-saver)
 
-The ten reference files are deliberately loadable in isolation. Scoping a review to one area pulls only that reference into context — a focused review costs roughly a tenth of a full one.
+The thirteen reference files are deliberately loadable in isolation. Scoping a review to one area pulls only that reference into context instead of the full skill.
 
 | You want… | Say |
 |---|---|
@@ -289,6 +281,9 @@ The ten reference files are deliberately loadable in isolation. Scoping a review
 | `Flow` collection + lifecycle + coroutine scopes | `compose-agent focus on concurrency` |
 | Flow operator selection + `StateFlow`/`SharedFlow` shape | `compose-agent focus on flows` |
 | reusable composable API shape | `compose-agent focus on component-api` |
+| Compose UI tests, screenshot tests, semantics, previews | `compose-agent focus on testing` |
+| focus, keyboard, D-pad, TV/desktop navigation | `compose-agent focus on focus` |
+| KMP/CMP source sets, `expect`/`actual`, platform interop | `compose-agent focus on kmp` |
 | deprecated / soft-deprecated APIs | `compose-agent focus on api` |
 | idiomatic Kotlin / Android style | `compose-agent focus on kotlin` |
 
@@ -326,12 +321,35 @@ compose-agent/
     concurrency.md               Flow collection + lifecycle, viewModelScope, dispatchers
     flows.md                     StateFlow / SharedFlow / cold Flow, stateIn, shareIn, flatMap variants, error handling, backpressure
     component-api.md             parameter order, slots, naming, state hoisting shape
+    testing.md                   UI tests, semantics assertions, screenshot tests, deterministic fakes, previews
+    focus.md                     FocusRequester, keyboard / D-pad input, focus restoration, focus tests
+    kmp.md                       KMP/CMP boundaries, expect/actual, interfaces, platform leaf composables
     kotlin.md                    Kotlin conventions + Android Kotlin style the LLM misses
 ```
 
 ---
 
 ## Changelog
+
+### 2.1.0 — 2026-05-12
+
+**Added — coverage notes for UI testing, focus navigation, and KMP/CMP.**
+
+- **`compose-agent/references/testing.md`**: plain state-driven Compose UI tests, semantics assertions, callback tests, screenshot tests, deterministic image/platform fakes, and previews.
+- **`compose-agent/references/focus.md`**: `FocusRequester`, `focusProperties`, keyboard/D-pad input, key handlers, focus restoration, and focus tests.
+- **`compose-agent/references/kmp.md`**: Kotlin Multiplatform / Compose Multiplatform boundaries, semantic common APIs, `expect` / `actual`, fakeable interfaces, platform leaf composables, and native interop.
+- **`jetpack-compose-audit`**: maps UI test, screenshot, focus/keyboard, and KMP/CMP surfaces as adjacent coverage notes. The score remains the same four-category 0-100 model, so historical reports stay comparable.
+- **Versions.** `jetpack-compose-audit` → `2.1.0`. `compose-agent` → `1.2.0`.
+
+### 2.0.1 — 2026-04-29
+
+**Sharpened — "no IO in composition" rule, with concrete class enumeration.**
+
+- **`compose-agent/references/performance.md`**: expanded the "Expensive Work In Composition" section with explicit IO categories, the Coil/Glide carve-out, the "`remember` is not the fix" warning, O(1) caveats, O(N) string/list work, inline regex triggers, and a "safe in composition" list.
+- **`compose-agent/references/effects.md`**: added an anti-pattern pointer back to the performance guidance so effect reviews encounter the composition-time work rule.
+- **`jetpack-compose-audit/references/scoring.md`**: tightened Performance and Side Effects deductions around IO and expensive work in composition.
+- **`jetpack-compose-audit/references/search-playbook.md`**: added grep patterns for inline regex, O(N) string and collection work, and forbidden IO class names.
+- **Versions.** `jetpack-compose-audit` → `2.0.1`. `compose-agent` → `1.1.2`.
 
 ### 2.0.0 — 2026-04-28
 

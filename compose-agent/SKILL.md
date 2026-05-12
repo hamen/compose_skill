@@ -1,12 +1,12 @@
 ---
 name: compose-agent
-description: Helps AI coding assistants write modern Jetpack Compose: correct state, side effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, idiomatic Kotlin, and well-shaped composable APIs. Targets the mistakes LLMs actually make in Compose code. Use when reading, writing, or reviewing Compose projects.
+description: Helps AI coding assistants write modern Jetpack Compose: correct state, side effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, idiomatic Kotlin, and well-shaped composable APIs. Targets the mistakes LLMs actually make in Compose code. Use when reading, writing, or reviewing Compose projects.
 license: MIT
 allowed-tools: Read, Glob, Grep, Edit, Write, Bash
-argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle']"
+argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle', 'testing', 'focus', 'kmp']"
 metadata:
   author: Ivan Morgillo
-  version: "1.1.2"
+  version: "1.2.0"
 ---
 
 # Compose Agent
@@ -33,7 +33,10 @@ If the repo pins older versions, match the repo — but call out what the modern
 7. Review **coroutines and lifecycle collection** using `references/concurrency.md`.
 8. Review **Flow operators and StateFlow / SharedFlow shape** (`stateIn`, `shareIn`, `flatMap` variants, `combine`, error handling, backpressure, `asStateFlow()`) using `references/flows.md`.
 9. Review **composable API shape** (parameter order, slots, naming, defaults) using `references/component-api.md`.
-10. Final **Kotlin style** pass using `references/kotlin.md`.
+10. Review **UI testing patterns** using `references/testing.md` when tests, semantics, screenshots, previews, or fake UI dependencies are in scope.
+11. Review **focus and keyboard / D-pad navigation** using `references/focus.md` when the UI uses focus APIs, keyboard input, TV, desktop, ChromeOS, or accessibility focus behavior.
+12. Review **Compose Multiplatform / KMP boundaries** using `references/kmp.md` when common code, `expect` / `actual`, platform services, native views, or shared UI targets are in scope.
+13. Final **Kotlin style** pass using `references/kotlin.md`.
 
 If doing a partial review, load only the relevant reference files — each references file is designed to be read in isolation.
 
@@ -133,6 +136,7 @@ When the agent is **writing new code** rather than reviewing, the same rules app
 - If it launches work, is that work in a `LaunchedEffect`, `produceState`, or the ViewModel — not in the composition body?
 - If it collects a Flow, is it `collectAsStateWithLifecycle()`?
 - Is the parameter order: data → modifier → other → content slot last?
+- If it needs focus, testing, or platform-specific behavior, did you load the focused reference before judging?
 
 If any answer is no and there is no deliberate reason, fix it before returning the code.
 
@@ -142,8 +146,7 @@ Out of scope in v1 — delegate elsewhere or scope down explicitly:
 
 - **Material 3 compliance, theming, and design tokens** — use the `material-3` skill.
 - **Scoring an existing codebase with numeric grades** — use the sibling `jetpack-compose-audit` skill in the same repo.
-- **Compose Multiplatform `expect`/`actual` patterns.**
-- **Wear OS / TV / Auto / Glance surfaces.**
+- **Wear OS / TV / Auto / Glance deep platform review** — this skill now covers focus and keyboard/D-pad basics, but not full platform certification.
 - **Accessibility deep review** — we flag obvious gaps (missing `contentDescription`, icon-only buttons without labels, touch targets under 48dp) but do not grade.
 
 If the user needs any of the above, narrow the scope and say so.
@@ -159,6 +162,9 @@ If the user needs any of the above, narrow the scope and say so.
 - `references/concurrency.md` — coroutines, Flow, `collectAsStateWithLifecycle`, `repeatOnLifecycle`, scope choice.
 - `references/flows.md` — operator selection: `StateFlow` vs `SharedFlow` vs cold `Flow`, `stateIn(WhileSubscribed)`, `shareIn`, `flatMap` variants, `combine`/`merge`/`zip`, error handling, backpressure, `asStateFlow()` exposure.
 - `references/component-api.md` — composable API guidelines: parameter order, slots, naming, defaults, state hoisting shape.
+- `references/testing.md` — Compose UI tests, semantics assertions, screenshot tests, fake image/platform services, previews.
+- `references/focus.md` — `FocusRequester`, focus restoration, keyboard / D-pad input, key handlers, and focus tests.
+- `references/kmp.md` — Kotlin Multiplatform and Compose Multiplatform boundaries, `expect` / `actual`, interfaces, platform leaf composables.
 - `references/kotlin.md` — Kotlin coding conventions and Android Kotlin style the LLM keeps missing.
 
 ## Primary Sources
@@ -168,6 +174,7 @@ Every rule in this skill traces back to one of:
 - `https://developer.android.com/develop/ui/compose` and its subpages
 - `https://developer.android.com/kotlin/style-guide`
 - `https://kotlinlang.org/docs/coding-conventions.html`
+- `https://www.jetbrains.com/help/kotlin-multiplatform-dev/`
 - `https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-api-guidelines.md`
 - `https://android.googlesource.com/platform/frameworks/support/+/androidx-main/compose/docs/compose-component-api-guidelines.md`
 

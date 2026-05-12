@@ -16,6 +16,8 @@ Before category scoring, locate:
 - screen packages
 - ViewModels and state holders
 - test and preview directories
+- Compose UI tests, screenshot tests, focus/keyboard tests, and semantics test helpers
+- KMP / Compose Multiplatform source sets (`commonMain`, `androidMain`, `iosMain`, `desktopMain`, `wasmJsMain`) and platform interop leaves
 
 Useful targets often include:
 
@@ -39,6 +41,57 @@ Search for:
 - `mutableStateOf`
 
 If Compose usage is sparse, state that clearly in the report and reduce confidence.
+
+## 2a. Map Adjacent Coverage Notes
+
+These areas are not scored in v1, but the audit should not be blind to them. Record presence, obvious gaps, and focused follow-ups in `Notes And Limits` / `Suggested Follow-Up`.
+
+### Testing Surface
+
+Search for:
+
+- `createComposeRule|createAndroidComposeRule`
+- `onNodeWithText|onNodeWithTag|onAllNodes|assertIsDisplayed|assertDoesNotExist|performClick|performTextInput`
+- `assertIsFocused|performKeyInput|pressKey`
+- `Paparazzi|Roborazzi|Screenshot|golden`
+- `@Preview|PreviewLightDark|PreviewFontScale|PreviewScreenSizes`
+
+Notes to add:
+
+- If reusable components or screen UI exist with no nearby UI tests/previews, note the gap but do not deduct.
+- If UI tests construct a full app graph for simple rendering/callback checks, recommend `compose-agent focus on testing`.
+- If screenshots rely on real network, clocks, random data, or live image loading, note likely flakiness and recommend deterministic fakes.
+
+### Focus / Keyboard Surface
+
+Search for:
+
+- `FocusRequester|focusRequester|focusProperties|focusable|onFocusChanged`
+- `onPreviewKeyEvent|onKeyEvent|Key\.Direction|Key\.Back|Key\.Escape`
+- `assertIsFocused|performKeyInput|pressKey`
+- `androidx\.tv|TvLazy|Dpad|Remote|ChromeOS|desktop`
+
+Notes to add:
+
+- If focus APIs exist without key-input tests, recommend `compose-agent focus on focus`.
+- If `requestFocus()` appears outside an effect, this can be a Side Effects deduction because it performs imperative work during composition.
+- If lazy-list focus appears index-based in reorderable content, note a focus-restoration risk.
+
+### KMP / Compose Multiplatform Surface
+
+Search for:
+
+- `commonMain|androidMain|iosMain|desktopMain|wasmJsMain`
+- `expect\s+|actual\s+`
+- `AndroidView|UIKitView|ComposeUIViewController`
+- `android\.content\.Context|Activity|UIViewController|NSBundle|Uri|Bundle` in common source sets
+- `collectAsStateWithLifecycle` inside common source sets
+
+Notes to add:
+
+- Android-only APIs in `commonMain` are a KMP boundary risk; recommend `compose-agent focus on kmp`.
+- Platform interop should stay at leaf composables with lifecycle handled by effects.
+- Do not deduct for Android-only APIs in Android-only modules. Only note the constraint when the repo is shared/KMP.
 
 ## 3. Performance Checks
 

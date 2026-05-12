@@ -130,6 +130,7 @@ Example format:
 - [state if only part of the repo was audited]
 - [state if confidence is medium/low]
 - [state if some categories had limited surface area]
+- Adjacent coverage notes: [UI tests / screenshot tests / focus-keyboard / KMP-CMP surfaces observed; state `none observed` if absent]
 - Strong Skipping mode: [on / off / mixed across modules; note any explicit module-level opt-in / opt-out]
 - Weight choice: [default 35/25/20/20, or note any deviation and why]
 - Renormalization: [list any N/A categories and the renormalized weights]
@@ -138,6 +139,9 @@ Example format:
 ## Suggested Follow-Up
 
 - Run `material-3` audit if the repo also shows likely design-system or Material 3 problems.
+- Run `compose-agent focus on testing` if UI tests, screenshot tests, previews, or fake-image/platform-service patterns need deeper review.
+- Run `compose-agent focus on focus` if keyboard, D-pad, TV, desktop, ChromeOS, or focus-restoration behavior is present.
+- Run `compose-agent focus on kmp` if Compose Multiplatform, KMP source sets, `expect` / `actual`, or platform interop boundaries are present.
 ```
 
 ## Tone

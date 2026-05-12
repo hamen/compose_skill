@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 2.0.1 — released 2026-04-29. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 2.1.0 — released 2026-05-12. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -20,15 +20,17 @@ It is intentionally focused on four categories:
 
 This skill does **not** score design or Material 3 compliance in v1. If the audit surfaces likely design-system problems, recommend a follow-up audit with the `material-3` skill (reference implementation: <https://github.com/hamen/material-3-skill>).
 
+Testing, focus/keyboard navigation, and Compose Multiplatform are **coverage notes**, not score categories. Map those surfaces when present, flag obvious risk, and recommend the focused `compose-agent` references (`testing`, `focus`, `kmp`) as follow-up work. Do not fold them into the 0-100 score unless the same root cause clearly affects one of the four scored categories.
+
 ## Out Of Scope In v1
 
 Owned and deliberate scope choices — call out the limitation in the report rather than silently producing thin coverage:
 
 - Material 3 compliance, theming, color/typography tokens — defer to the `material-3` skill.
 - Accessibility scoring (`semantics`, content descriptions, touch-target sizing) — flag obvious gaps as a note, do not score.
-- UI test coverage and Compose test rule patterns — note presence/absence, do not score.
-- Compose Multiplatform-specific rules (`expect`/`actual`, target-specific code paths).
-- Wear OS / TV / Auto / Glance surfaces.
+- UI test coverage and Compose test rule patterns — note presence/absence, do not score; recommend `compose-agent focus on testing` for deeper review.
+- Compose Multiplatform-specific rules (`expect`/`actual`, target-specific code paths) — note surface area and obvious platform-boundary risk; recommend `compose-agent focus on kmp` for deeper review.
+- Wear OS / TV / Auto / Glance surfaces — note obvious focus / keyboard / D-pad risk; recommend `compose-agent focus on focus` for deeper review.
 - Build performance (incremental compilation, KSP/KAPT choice).
 
 If the user explicitly asks for any of these, narrow the scope and state it in the report.
@@ -100,7 +102,9 @@ Before scoring, identify:
 - theme or design-system packages
 - state holder or ViewModel areas
 - test and preview locations
+- UI test, screenshot test, focus/keyboard test, and semantics-test locations
 - baseline-profile related modules or config if present
+- KMP / Compose Multiplatform source sets (`commonMain`, `androidMain`, `iosMain`, `desktopMain`, `wasmJsMain`) if present
 
 ### 3. Build A Compose Surface Map
 
@@ -115,6 +119,9 @@ Look for:
 - `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `rememberUpdatedState`, `produceState`
 - `LazyColumn`, `LazyRow`, `items`, `itemsIndexed`
 - animation APIs: `animate*AsState`, `Animatable`, `updateTransition`, `rememberInfiniteTransition`, `AnimatedVisibility`, `AnimatedContent`, `Crossfade`
+- focus APIs: `FocusRequester`, `focusRequester`, `focusProperties`, `focusable`, `onFocusChanged`, `onPreviewKeyEvent`, `onKeyEvent`
+- UI testing APIs: `createComposeRule`, `createAndroidComposeRule`, `onNodeWithText`, `assertIsDisplayed`, `assertIsFocused`, screenshot test rules
+- KMP/CMP indicators: `commonMain`, `expect`, `actual`, `AndroidView`, `UIKitView`, platform services passed into common UI
 
 If the repo is large, audit by category or by module. If subagents are available, parallelize category scans by spawning `Explore`-type subagents (no write tools) and merge the findings.
 
@@ -264,6 +271,7 @@ The report must include:
 - evidence file paths
 - prioritized remediation list
 - optional follow-up note to run `material-3` if design issues are suspected
+- optional coverage notes for testing, focus/keyboard, and KMP/CMP surfaces; these notes do not change the score unless they overlap with the scored categories
 
 Write the report to:
 
@@ -286,6 +294,7 @@ Include:
   - one official doc URL from `references/canonical-sources.md`
   - expected impact that matches the active ceiling table: on SSM-off, frame it in terms of named-only `skippable%` / unstable-param reductions; on SSM-on, frame it in terms of removing instance-recreation churn, fixing expensive / broken `equals()`, or clearing the binding cap
 - whether a `material-3` audit is worth running next
+- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, or `compose-agent focus on kmp`
 
 The top-three fixes in the chat summary MUST be the same items as the report's `Prioritized Fixes` list (same file paths, same doc links). Do not add generic advice in chat that isn't in the written report.
 
