@@ -14,7 +14,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/hamen/compose_skill.git",
-        "path": "compose-agent"
+        "path": "skills/compose-agent"
       },
       "tags": ["android", "jetpack-compose", "kotlin", "ui-testing", "focus", "kotlin-multiplatform", "agent-skill"]
     },
@@ -26,7 +26,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/hamen/compose_skill.git",
-        "path": "jetpack-compose-audit"
+        "path": "skills/jetpack-compose-audit"
       },
       "tags": ["android", "jetpack-compose", "audit", "performance", "ui-testing", "focus", "kotlin-multiplatform"]
     }

@@ -49,36 +49,36 @@ if (missingLinks.length) {
 
 const plugins = ['compose-agent', 'jetpack-compose-audit'];
 for (const plugin of plugins) {
-  const claudeManifest = JSON.parse(readFileSync(`${plugin}/.claude-plugin/plugin.json`, 'utf8'));
-  const cursorManifest = JSON.parse(readFileSync(`${plugin}/.cursor-plugin/plugin.json`, 'utf8'));
+  const claudeManifest = JSON.parse(readFileSync(`skills/${plugin}/.claude-plugin/plugin.json`, 'utf8'));
+  const cursorManifest = JSON.parse(readFileSync(`skills/${plugin}/.cursor-plugin/plugin.json`, 'utf8'));
 
   if ('skills' in claudeManifest) {
-    throw new Error(`${plugin}/.claude-plugin/plugin.json must use default skills/ discovery`);
+    throw new Error(`skills/${plugin}/.claude-plugin/plugin.json must use default skills/ discovery`);
   }
   if (claudeManifest.version !== cursorManifest.version) {
-    throw new Error(`${plugin} manifest versions differ`);
+    throw new Error(`skills/${plugin} manifest versions differ`);
   }
-  if (!existsSync(`${plugin}/skills/${plugin}/SKILL.md`)) {
-    throw new Error(`${plugin} is missing skills/${plugin}/SKILL.md`);
+  if (!existsSync(`skills/${plugin}/skills/${plugin}/SKILL.md`)) {
+    throw new Error(`skills/${plugin} is missing skills/${plugin}/SKILL.md`);
   }
 }
 
-const composeSkill = readFileSync('compose-agent/skills/compose-agent/SKILL.md', 'utf8');
-const composeVersion = JSON.parse(readFileSync('compose-agent/.claude-plugin/plugin.json', 'utf8')).version;
+const composeSkill = readFileSync('skills/compose-agent/skills/compose-agent/SKILL.md', 'utf8');
+const composeVersion = JSON.parse(readFileSync('skills/compose-agent/.claude-plugin/plugin.json', 'utf8')).version;
 if (!composeSkill.includes(`version: "${composeVersion}"`)) {
   throw new Error('compose-agent SKILL.md metadata version does not match manifest version');
 }
 
-const auditSkill = readFileSync('jetpack-compose-audit/skills/jetpack-compose-audit/SKILL.md', 'utf8');
-const auditVersion = JSON.parse(readFileSync('jetpack-compose-audit/.claude-plugin/plugin.json', 'utf8')).version;
+const auditSkill = readFileSync('skills/jetpack-compose-audit/skills/jetpack-compose-audit/SKILL.md', 'utf8');
+const auditVersion = JSON.parse(readFileSync('skills/jetpack-compose-audit/.claude-plugin/plugin.json', 'utf8')).version;
 if (!auditSkill.includes(`**Skill version:** ${auditVersion}`)) {
   throw new Error('jetpack-compose-audit SKILL.md version does not match manifest version');
 }
 NODE
 
 if command -v claude >/dev/null 2>&1; then
-  claude plugin validate ./compose-agent
-  claude plugin validate ./jetpack-compose-audit
+  claude plugin validate ./skills/compose-agent
+  claude plugin validate ./skills/jetpack-compose-audit
 else
   echo "warning: claude CLI not found; skipped Claude plugin validation" >&2
 fi

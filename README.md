@@ -90,10 +90,10 @@ The report lists every occurrence with file path and line number, not just the c
 Install directly from the Git repository — no cloning, no symlinking:
 
 ```
-/plugin add hamen/compose_skill --subdir jetpack-compose-audit
+/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
 ```
 
-Claude Code reads `jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md` automatically. Updates arrive via the normal plugin update flow.
+Claude Code reads `skills/jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md` automatically. Updates arrive via the normal plugin update flow.
 
 ### Cursor
 
@@ -109,15 +109,15 @@ Use this on Cursor, on older Claude Code versions without `/plugin add`, or when
 ```bash
 # Claude Code
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.claude/skills/jetpack-compose-audit
+ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.claude/skills/jetpack-compose-audit
 
 # Codex
 mkdir -p ~/.codex/skills
-ln -s "$(pwd)/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.codex/skills/jetpack-compose-audit
+ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.codex/skills/jetpack-compose-audit
 
 # Cursor
 mkdir -p ~/.cursor/skills
-ln -s "$(pwd)/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.cursor/skills/jetpack-compose-audit
+ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.cursor/skills/jetpack-compose-audit
 ```
 
 ---
@@ -197,23 +197,25 @@ Top 3 fixes
 ## Layout
 
 ```
-jetpack-compose-audit/
-  .claude-plugin/plugin.json     Claude Code plugin manifest
-  .cursor-plugin/plugin.json     Cursor plugin manifest
-  skills/
-    jetpack-compose-audit/
-      SKILL.md                   main audit skill (process, principles, output)
-      scripts/
-        compose-reports.init.gradle  Gradle init script injected via --init-script
-      references/
-        scoring.md               rubric with measured ceilings and inline citations
-        search-playbook.md       grep patterns, regex, read-the-file heuristics
-        canonical-sources.md     every URL the rubric cites
-        report-template.md       required structure for COMPOSE-AUDIT-REPORT.md
-        diagnostics.md           manual-mode fallback snippets
+skills/
+  jetpack-compose-audit/
+    .claude-plugin/plugin.json     Claude Code plugin manifest
+    .cursor-plugin/plugin.json     Cursor plugin manifest
+    skills/
+      jetpack-compose-audit/
+        SKILL.md                   main audit skill (process, principles, output)
+        scripts/
+          compose-reports.init.gradle  Gradle init script injected via --init-script
+        references/
+          scoring.md               rubric with measured ceilings and inline citations
+          search-playbook.md       grep patterns, regex, read-the-file heuristics
+          canonical-sources.md     every URL the rubric cites
+          report-template.md       required structure for COMPOSE-AUDIT-REPORT.md
+          diagnostics.md           manual-mode fallback snippets
+  compose-agent/                   sibling skill — see § Sibling skill below
 ```
 
-A sibling skill, `compose-agent/`, ships in the same repo — see [§ Sibling skill](#sibling-skill--compose-agent) for its own layout and usage.
+A sibling skill, `skills/compose-agent/`, ships in the same repo — see [§ Sibling skill](#sibling-skill--compose-agent) for its own layout and usage.
 
 ---
 
@@ -228,7 +230,7 @@ A sibling skill, `compose-agent/`, ships in the same repo — see [§ Sibling sk
 
 ## Sibling skill — `compose-agent`
 
-This repo ships a second skill alongside the audit: [`compose-agent/`](./compose-agent/). Where the audit **reviews an existing repo** end-to-end and produces a score, `compose-agent` works at **file and feature scope** while you are reading, writing, or modifying Compose.
+This repo ships a second skill alongside the audit: [`compose-agent/`](./skills/compose-agent/). Where the audit **reviews an existing repo** end-to-end and produces a score, `compose-agent` works at **file and feature scope** while you are reading, writing, or modifying Compose.
 
 - **Responds to:** "is this right?", "rewrite this the modern way", "check this file for deprecated API", "find state hoisting mistakes in this feature".
 - **Built for:** [android/skills#27](https://github.com/android/skills/issues/27) — the Android equivalent of [`swiftui-agent-skill`](https://github.com/twostraws/swiftui-agent-skill). The philosophy is the same: target the mistakes LLMs actually make in Compose, not repeat basics the model already knows.
@@ -241,12 +243,12 @@ Same flow as the audit skill, pointing at the subdirectory.
 **Claude Code:**
 
 ```
-/plugin add hamen/compose_skill --subdir compose-agent
+/plugin add hamen/compose_skill --subdir skills/compose-agent
 ```
 
 **Cursor:** import the repo as a plugin and pick `compose-agent` in the subdirectory selector.
 
-**Manual:** symlink `compose-agent/skills/compose-agent/` into your skills directory (`~/.claude/skills/compose-agent`, `~/.cursor/skills/compose-agent`, etc.).
+**Manual:** symlink `skills/compose-agent/skills/compose-agent/` into your skills directory (`~/.claude/skills/compose-agent`, `~/.cursor/skills/compose-agent`, etc.).
 
 Both skills can live side by side — they do not share state and do not interfere.
 
@@ -299,7 +301,7 @@ The thirteen reference files are deliberately loadable in isolation. Scoping a r
 - **Prioritized summary of up to three items**, highest impact first. Act on the chat alone if you are short on time.
 - **No nitpicks.** Clean files are not listed.
 
-An example output block is in [`compose-agent/skills/compose-agent/SKILL.md`](./compose-agent/skills/compose-agent/SKILL.md) under "Example Output".
+An example output block is in [`compose-agent/skills/compose-agent/SKILL.md`](./skills/compose-agent/skills/compose-agent/SKILL.md) under "Example Output".
 
 ### `compose-agent` vs `jetpack-compose-audit`
 
@@ -315,7 +317,7 @@ Overlap is fine. Audit on the release candidate, `compose-agent` on every featur
 ### Layout
 
 ```
-compose-agent/
+skills/compose-agent/
   .claude-plugin/plugin.json     Claude Code plugin manifest
   .cursor-plugin/plugin.json     Cursor plugin manifest
   skills/
@@ -383,15 +385,15 @@ Both skills in this repo now pass the strict [agentskills.io specification](http
 /plugin add hamen/compose_skill
 
 # New
-/plugin add hamen/compose_skill --subdir jetpack-compose-audit
+/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
 ```
 
-Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir jetpack-compose-audit` and updates resume normally.
+Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir skills/jetpack-compose-audit` and updates resume normally.
 
 - **Repo restructure.** `SKILL.md`, `references/`, `scripts/`, `.claude-plugin/`, and `.cursor-plugin/` all moved from the repo root into `jetpack-compose-audit/`. Git tracked the moves as renames, so blame and history are preserved. No skill content changed.
 - **Cross-skill reference inlined.** `jetpack-compose-audit/references/search-playbook.md` previously linked into `compose-agent/references/flows.md` for the "Flow operators belong outside the composable body" rule — that pointer is replaced with the rule inlined directly. Both skills are now self-contained, with no parent-traversal references between them.
 - **Manual symlink instructions updated.** The README symlink target is now `$(pwd)/jetpack-compose-audit` instead of `$(pwd)`.
-- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
+- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir skills/compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
 
 **Why 2.0.0 and not 1.6.0.** The install URL change is breaking — users on the old URL silently stop receiving updates. Semver says that's a major bump, regardless of whether the rubric or report content moved. Actual audit behavior, scoring, categories, and report format are identical to `1.5.1`.
 
@@ -445,7 +447,7 @@ Where `jetpack-compose-audit` scores your whole repo end-to-end, `compose-agent`
 - **Short `SKILL.md` that routes to nine focused reference files** — `api`, `state`, `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `kotlin`. Only the reference relevant to the current task is pulled into context.
 - **Two modes, no config.** Review mode: "check this file" returns a file-by-file report with before/after snippets and official doc links. Authoring mode: six silent guardrails run on every new composable before the code comes back (`modifier` param, state hoisting, lazy keys, effect placement, lifecycle-aware collection, parameter order).
 - **Scoped reviews save tokens.** `compose-agent focus on state` loads only `state.md` — roughly a tenth of a full review. Same for `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `api`, `kotlin`.
-- **Install side by side** with the audit skill: `/plugin add hamen/compose_skill --subdir compose-agent`. Cursor and manual-symlink paths are documented in the new "Sibling skill" section of this README.
+- **Install side by side** with the audit skill: `/plugin add hamen/compose_skill --subdir skills/compose-agent`. Cursor and manual-symlink paths are documented in the new "Sibling skill" section of this README.
 
 **Proven on a real app.** Dogfooded against `kindle-gratis-compose` before shipping. In one review of three files it caught:
 
