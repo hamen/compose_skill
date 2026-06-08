@@ -14,14 +14,15 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 
 ### 3.1.0 — 2026-06-08
 
-**Added — Android 12+ splash icon blur detection.**
+**Android 12+ splash icon blur detection.**
 
-- **Normal audit coverage**: `jetpack-compose-audit` now scans Android splash-screen theme resources during the regular audit flow. No separate command is needed.
-- **Resource-aware finding**: the audit resolves `windowSplashScreenAnimatedIcon` references and flags the risky shape where API 31+ uses a static `<vector>`, `<adaptive-icon>`, bitmap, or layer-list instead of a `drawable-v31` `<animated-vector>` wrapper.
-- **Non-scored, still actionable**: Android Launch UX remains outside the four numeric Compose categories, but concrete splash icon risks can appear in `Critical Findings` and `Prioritized Fixes`.
-- **Grounded in the AOSP source**: docs explain the real mechanism from the platform issue — an `AnimatedVectorDrawable` is `Animatable` and is drawn on a SurfaceView at full size, while a static icon goes through `ImmobileIconDrawable`, which pre-renders at `starting_surface_default_icon_size` (108 dp) and upscales to the visible 160/192 dp icon. Affects XHDPI (320 dpi)+ devices since Android 12 (API 31); still open/unfixed at ship time. Includes the official sizing spec (160/192 dp inner circles, 432 dp AVD canvas, 288 dp visible, duration caps).
-- **Copy-pasteable workaround, straight from the reporter**: *an `<animated-vector>` with no animators is enough* — no `<target>`, animator, or named group needed. `compose-agent` ships a minimal example and calls out the one trap that breaks naive attempts: the `drawable-v31` **self-reference loop** (the wrapper must point `android:drawable` at a *differently-named* vector).
-- **Versions.** `jetpack-compose-audit` → `3.1.0`. `compose-agent` → `2.1.0`.
+There's a years-old Android bug ([issuetracker 520672537](https://issuetracker.google.com/issues/520672537)): if your Android 12+ splash icon is a static drawable, the system pre-renders it at 108 dp and scales it up to 160/192 dp — so a crisp vector shows up **blurry** on most phones (XHDPI and above). The fix is to wrap the same vector in an `<animated-vector>` with no animators, which routes it to the full-size render path. This release teaches both skills to catch it and fix it.
+
+- **The audit now flags it automatically.** `jetpack-compose-audit` scans your splash-screen theme resources during a normal audit — no extra command. It resolves `windowSplashScreenAnimatedIcon`, follows the drawable, and reports when API 31+ resolves to a static icon instead of an `<animated-vector>`.
+- **It's a non-scored finding, but still surfaced.** Splash icon risk lives under *Android Launch UX*, outside the four numeric Compose categories, so it never moves your 0–100 score — but it still shows up in *Critical Findings* / *Prioritized Fixes* when it's real.
+- **The agent knows the fix.** `compose-agent` documents the one-line workaround (an empty `<animated-vector>` wrapping your vector) and the single trap that breaks naive attempts — the `drawable-v31` self-reference loop, where the wrapper must point at a *differently-named* vector.
+- **Grounded in the actual AOSP source**, not guesswork: the docs explain why an `AnimatedVectorDrawable` (it's `Animatable`, drawn at full size) dodges the `ImmobileIconDrawable` 108 dp pre-render, plus the official icon sizing spec.
+- **Versions.** `jetpack-compose-audit` → `3.1.0`, `compose-agent` → `2.1.0`.
 
 ### 3.0.0 — 2026-05-29
 
