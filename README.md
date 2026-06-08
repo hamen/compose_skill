@@ -6,7 +6,9 @@
 
 A strict, evidence-based audit for Android Jetpack Compose repositories. Point it at a repo, let it run the build once, and get back a 0-100 score, a 0-10 score per category, an actionable top-three fix list, and a full Markdown report with every deduction cited against an official `developer.android.com` page.
 
-Built for Claude Code, Cursor, and any agent that loads the Anthropic skill format.
+Built for Claude Code, Codex, Cursor, Gemini, and any agent that loads the Anthropic skill format.
+
+Built and tested with every frontier model — Claude Opus 4.8, GPT-5.5, and Gemini 3.5 Flash — so the rubric, prompts, and references hold up no matter which one drives the audit.
 
 ---
 
