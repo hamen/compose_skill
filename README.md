@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 2.1.1 · released 2026-05-20** — Fixed Claude Code plugin loading on Windows by adopting the documented `skills/<name>/SKILL.md` plugin layout and removing the `skills: "./"` manifest override.
+**Version 3.0.0 · released 2026-05-29** — Breaking repository-layout release. Both skills now use the direct modern layout `skills/<name>/SKILL.md`, which is the canonical shape for `npx skills` and the pattern to copy into sibling repositories such as Material Design. `compose-agent` ships as `2.0.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,33 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## What's new
+
+### 3.0.0 — 2026-05-29
+
+**Breaking — direct `skills/<name>/SKILL.md` layout.**
+
+- **Modern skill layout**: `compose-agent` now lives at `skills/compose-agent/SKILL.md`; `jetpack-compose-audit` now lives at `skills/jetpack-compose-audit/SKILL.md`.
+- **No compatibility wrappers**: the previous `compose-agent/`, `jetpack-compose-audit/`, and nested `skills/<plugin>/skills/<name>/` layouts are intentionally removed. Keeping one canonical layout keeps this repo clean and gives other Compose-related skills a clear example to follow.
+- **Install paths changed**: existing installs do not migrate automatically because agents remember the old subdirectory. Remove the old install once and reinstall from the new path.
+- **No behavior change**: audit scoring, references, scripts, report format, and `compose-agent` review rules are unchanged.
+- **Versions.** `jetpack-compose-audit` → `3.0.0`. `compose-agent` → `2.0.0`.
+
+Migration:
+
+```bash
+# npx skills users
+npx --yes skills remove compose-agent jetpack-compose-audit -y
+npx --yes skills add hamen/compose_skill --skill '*' -y
+```
+
+Claude Code users who installed with the old subdirectories should remove the old plugin install, then reinstall with:
+
+```
+/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
+/plugin add hamen/compose_skill --subdir skills/compose-agent
+```
+
+This is a breaking change on purpose: one clean layout is better than carrying repository-shape debt forever.
 
 ### 2.1.1 — 2026-05-20
 
@@ -85,39 +112,57 @@ The report lists every occurrence with file path and line number, not just the c
 
 ## Install
 
-### Claude Code
+### Recommended: `npx skills`
 
-Install directly from the Git repository — no cloning, no symlinking:
+Install both skills:
+
+```bash
+npx --yes skills add hamen/compose_skill --skill '*' -y
+```
+
+Or install one skill:
+
+```bash
+npx --yes skills add hamen/compose_skill --skill jetpack-compose-audit -y
+npx --yes skills add hamen/compose_skill --skill compose-agent -y
+```
+
+This is the preferred path for Codex, Claude Code, Cursor, and multi-agent setups because the repo now follows the direct `skills/<name>/SKILL.md` layout.
+
+### Claude Code plugin install
+
+Direct plugin install still works if you prefer Claude Code's plugin flow:
 
 ```
 /plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
 ```
 
-Claude Code reads `skills/jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md` automatically. Updates arrive via the normal plugin update flow.
+Claude Code reads `skills/jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md`. For `compose-agent`, use:
 
-### Cursor
+```
+/plugin add hamen/compose_skill --subdir skills/compose-agent
+```
 
-The repo ships a `.cursor-plugin/plugin.json` manifest, so Cursor sees it as a valid single-skill plugin. There are two install paths today:
+### Breaking migration
 
-- **Team Marketplace (orgs)**: a workspace admin can import this GitHub repository into a team marketplace. The manifest is what makes that import succeed.
-- **Manual symlink (individuals)**: use the manual install block below. Individual Cursor users do not have a `/plugin add`-style command for arbitrary Git URLs yet; symlink install remains the practical path until this skill is published to the public Cursor Marketplace.
+If you installed an older release with `--subdir compose-agent`, `--subdir jetpack-compose-audit`, or the nested `skills/<plugin>/skills/<name>` manual symlink, `/plugin update` will keep pointing at the old path. Remove that old install once and reinstall with the commands above.
 
-### Manual install (all harnesses)
+### Manual symlink
 
-Use this on Cursor, on older Claude Code versions without `/plugin add`, or whenever you want `git pull` in this directory to update the skill in place:
+Use this when you want `git pull` in this directory to update a local checkout in place:
 
 ```bash
-# Claude Code
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.claude/skills/jetpack-compose-audit
-
-# Codex
 mkdir -p ~/.codex/skills
-ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.codex/skills/jetpack-compose-audit
-
-# Cursor
 mkdir -p ~/.cursor/skills
-ln -s "$(pwd)/skills/jetpack-compose-audit/skills/jetpack-compose-audit" ~/.cursor/skills/jetpack-compose-audit
+
+ln -s "$(pwd)/skills/jetpack-compose-audit" ~/.claude/skills/jetpack-compose-audit
+ln -s "$(pwd)/skills/jetpack-compose-audit" ~/.codex/skills/jetpack-compose-audit
+ln -s "$(pwd)/skills/jetpack-compose-audit" ~/.cursor/skills/jetpack-compose-audit
+
+ln -s "$(pwd)/skills/compose-agent" ~/.claude/skills/compose-agent
+ln -s "$(pwd)/skills/compose-agent" ~/.codex/skills/compose-agent
+ln -s "$(pwd)/skills/compose-agent" ~/.cursor/skills/compose-agent
 ```
 
 ---
@@ -181,9 +226,9 @@ Top 3 fixes
 
 ## Scope
 
-**In scope (1.x).** Jetpack Compose on Android, Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping default).
+**In scope.** Jetpack Compose on Android, Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping default).
 
-**Out of scope (1.x)** — the skill will call these out as a note rather than silently produce thin coverage:
+**Out of scope** — the skill will call these out as a note rather than silently produce thin coverage:
 
 - Material 3 compliance, theming, color/typography — defer to the `material-3` skill.
 - Accessibility scoring (semantics, touch targets) — flagged as notes, not scored.
@@ -201,17 +246,15 @@ skills/
   jetpack-compose-audit/
     .claude-plugin/plugin.json     Claude Code plugin manifest
     .cursor-plugin/plugin.json     Cursor plugin manifest
-    skills/
-      jetpack-compose-audit/
-        SKILL.md                   main audit skill (process, principles, output)
-        scripts/
-          compose-reports.init.gradle  Gradle init script injected via --init-script
-        references/
-          scoring.md               rubric with measured ceilings and inline citations
-          search-playbook.md       grep patterns, regex, read-the-file heuristics
-          canonical-sources.md     every URL the rubric cites
-          report-template.md       required structure for COMPOSE-AUDIT-REPORT.md
-          diagnostics.md           manual-mode fallback snippets
+    SKILL.md                       main audit skill (process, principles, output)
+    scripts/
+      compose-reports.init.gradle  Gradle init script injected via --init-script
+    references/
+      scoring.md                   rubric with measured ceilings and inline citations
+      search-playbook.md           grep patterns, regex, read-the-file heuristics
+      canonical-sources.md         every URL the rubric cites
+      report-template.md           required structure for COMPOSE-AUDIT-REPORT.md
+      diagnostics.md               manual-mode fallback snippets
   compose-agent/                   sibling skill — see § Sibling skill below
 ```
 
@@ -238,7 +281,13 @@ This repo ships a second skill alongside the audit: [`compose-agent/`](./skills/
 
 ### Install
 
-Same flow as the audit skill, pointing at the subdirectory.
+Use the same direct skills flow as the audit skill.
+
+**Recommended:**
+
+```bash
+npx --yes skills add hamen/compose_skill --skill compose-agent -y
+```
 
 **Claude Code:**
 
@@ -248,7 +297,7 @@ Same flow as the audit skill, pointing at the subdirectory.
 
 **Cursor:** import the repo as a plugin and pick `compose-agent` in the subdirectory selector.
 
-**Manual:** symlink `skills/compose-agent/skills/compose-agent/` into your skills directory (`~/.claude/skills/compose-agent`, `~/.cursor/skills/compose-agent`, etc.).
+**Manual:** symlink `skills/compose-agent/` into your skills directory (`~/.claude/skills/compose-agent`, `~/.cursor/skills/compose-agent`, etc.).
 
 Both skills can live side by side — they do not share state and do not interfere.
 
@@ -301,7 +350,7 @@ The thirteen reference files are deliberately loadable in isolation. Scoping a r
 - **Prioritized summary of up to three items**, highest impact first. Act on the chat alone if you are short on time.
 - **No nitpicks.** Clean files are not listed.
 
-An example output block is in [`compose-agent/skills/compose-agent/SKILL.md`](./skills/compose-agent/skills/compose-agent/SKILL.md) under "Example Output".
+An example output block is in [`compose-agent/SKILL.md`](./skills/compose-agent/SKILL.md) under "Example Output".
 
 ### `compose-agent` vs `jetpack-compose-audit`
 
@@ -320,28 +369,62 @@ Overlap is fine. Audit on the release candidate, `compose-agent` on every featur
 skills/compose-agent/
   .claude-plugin/plugin.json     Claude Code plugin manifest
   .cursor-plugin/plugin.json     Cursor plugin manifest
-  skills/
-    compose-agent/
-      SKILL.md                   short router — loads references on demand
-      references/
-        api.md                   deprecated + soft-deprecated APIs → modern replacements
-        state.md                 hoisting, remember, rememberSaveable, ViewModel boundary
-        effects.md               LaunchedEffect / DisposableEffect / produceState / snapshotFlow
-        performance.md           Strong Skipping, lambda modifiers, lazy keys, typed state
-        modifiers.md             order, lambda form, Modifier.Node vs composed { }
-        navigation.md            Navigation 3 + Nav2.8 type-safe destinations
-        concurrency.md           Flow collection + lifecycle, viewModelScope, dispatchers
-        flows.md                 StateFlow / SharedFlow / cold Flow, stateIn, shareIn, flatMap variants, error handling, backpressure
-        component-api.md         parameter order, slots, naming, state hoisting shape
-        testing.md               UI tests, semantics assertions, screenshot tests, deterministic fakes, previews
-        focus.md                 FocusRequester, keyboard / D-pad input, focus restoration, focus tests
-        kmp.md                   KMP/CMP boundaries, expect/actual, interfaces, platform leaf composables
-        kotlin.md                Kotlin conventions + Android Kotlin style the LLM misses
+  SKILL.md                       short router — loads references on demand
+  references/
+    api.md                       deprecated + soft-deprecated APIs → modern replacements
+    state.md                     hoisting, remember, rememberSaveable, ViewModel boundary
+    effects.md                   LaunchedEffect / DisposableEffect / produceState / snapshotFlow
+    performance.md               Strong Skipping, lambda modifiers, lazy keys, typed state
+    modifiers.md                 order, lambda form, Modifier.Node vs composed { }
+    navigation.md                Navigation 3 + Nav2.8 type-safe destinations
+    concurrency.md               Flow collection + lifecycle, viewModelScope, dispatchers
+    flows.md                     StateFlow / SharedFlow / cold Flow, stateIn, shareIn, flatMap variants, error handling, backpressure
+    component-api.md             parameter order, slots, naming, state hoisting shape
+    testing.md                   UI tests, semantics assertions, screenshot tests, deterministic fakes, previews
+    focus.md                     FocusRequester, keyboard / D-pad input, focus restoration, focus tests
+    kmp.md                       KMP/CMP boundaries, expect/actual, interfaces, platform leaf composables
+    kotlin.md                    Kotlin conventions + Android Kotlin style the LLM misses
 ```
 
 ---
 
 ## Changelog
+
+### 3.0.0 — 2026-05-29
+
+**Breaking — canonical root `skills/` layout.**
+
+This release removes the compatibility layouts and makes the repository match the modern skill-distribution pattern used by current skill tooling:
+
+```
+skills/
+  compose-agent/SKILL.md
+  jetpack-compose-audit/SKILL.md
+```
+
+Why break it: this repo is meant to be an example other Android and Compose skills can copy. Carrying old wrapper folders would make installs harder to explain, make CI weaker, and keep teaching the wrong repository shape. A one-time reinstall is cleaner than preserving layout debt.
+
+Required action for existing installs:
+
+```bash
+# npx skills users
+npx --yes skills remove compose-agent jetpack-compose-audit -y
+npx --yes skills add hamen/compose_skill --skill '*' -y
+```
+
+Claude Code users who installed older subdirectories should uninstall the old plugin entry, then reinstall the skills they use:
+
+```
+/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
+/plugin add hamen/compose_skill --subdir skills/compose-agent
+```
+
+- **Removed legacy folders.** `compose-agent/`, `jetpack-compose-audit/`, and nested `skills/<plugin>/skills/<name>/` wrappers are gone.
+- **Direct skill folders.** `SKILL.md`, `references/`, and `scripts/` now sit directly under `skills/<name>/`.
+- **Manifest compatibility retained.** Each direct skill folder still carries `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json`, so Claude Code and Cursor plugin validation continue to work from the same canonical folder.
+- **CI hardened.** `bin/ci` now fails if nested wrapper directories come back, if marketplace paths drift, or if manifest/SKILL versions diverge.
+- **No audit behavior change.** Scoring, report shape, references, and Gradle diagnostics are unchanged.
+- **Versions.** `jetpack-compose-audit` → `3.0.0`. `compose-agent` → `2.0.0`.
 
 ### 2.1.1 — 2026-05-20
 
@@ -385,15 +468,15 @@ Both skills in this repo now pass the strict [agentskills.io specification](http
 /plugin add hamen/compose_skill
 
 # New
-/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
+/plugin add hamen/compose_skill --subdir jetpack-compose-audit
 ```
 
-Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir skills/jetpack-compose-audit` and updates resume normally.
+Anyone running `/plugin update` against the old install will not pick up changes after `1.5.1`. Reinstall once with `--subdir jetpack-compose-audit` and updates resume normally.
 
 - **Repo restructure.** `SKILL.md`, `references/`, `scripts/`, `.claude-plugin/`, and `.cursor-plugin/` all moved from the repo root into `jetpack-compose-audit/`. Git tracked the moves as renames, so blame and history are preserved. No skill content changed.
 - **Cross-skill reference inlined.** `jetpack-compose-audit/references/search-playbook.md` previously linked into `compose-agent/references/flows.md` for the "Flow operators belong outside the composable body" rule — that pointer is replaced with the rule inlined directly. Both skills are now self-contained, with no parent-traversal references between them.
 - **Manual symlink instructions updated.** The README symlink target is now `$(pwd)/jetpack-compose-audit` instead of `$(pwd)`.
-- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir skills/compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
+- **`compose-agent` is unchanged.** Folder, install URL (`/plugin add hamen/compose_skill --subdir compose-agent`), and version (`1.1.1`) are all the same. No action needed for compose-agent users.
 
 **Why 2.0.0 and not 1.6.0.** The install URL change is breaking — users on the old URL silently stop receiving updates. Semver says that's a major bump, regardless of whether the rubric or report content moved. Actual audit behavior, scoring, categories, and report format are identical to `1.5.1`.
 
@@ -447,7 +530,7 @@ Where `jetpack-compose-audit` scores your whole repo end-to-end, `compose-agent`
 - **Short `SKILL.md` that routes to nine focused reference files** — `api`, `state`, `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `kotlin`. Only the reference relevant to the current task is pulled into context.
 - **Two modes, no config.** Review mode: "check this file" returns a file-by-file report with before/after snippets and official doc links. Authoring mode: six silent guardrails run on every new composable before the code comes back (`modifier` param, state hoisting, lazy keys, effect placement, lifecycle-aware collection, parameter order).
 - **Scoped reviews save tokens.** `compose-agent focus on state` loads only `state.md` — roughly a tenth of a full review. Same for `effects`, `performance`, `modifiers`, `navigation`, `concurrency`, `component-api`, `api`, `kotlin`.
-- **Install side by side** with the audit skill: `/plugin add hamen/compose_skill --subdir skills/compose-agent`. Cursor and manual-symlink paths are documented in the new "Sibling skill" section of this README.
+- **Install side by side** with the audit skill: `/plugin add hamen/compose_skill --subdir compose-agent`. Cursor and manual-symlink paths are documented in the new "Sibling skill" section of this README.
 
 **Proven on a real app.** Dogfooded against `kindle-gratis-compose` before shipping. In one review of three files it caught:
 
