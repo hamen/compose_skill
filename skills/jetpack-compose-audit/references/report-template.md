@@ -49,7 +49,7 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - Android 12+ splash icon status: [clean / risky / not configured / not inspected]
 - Evidence: [`windowSplashScreenAnimatedIcon` theme item, resolved drawable file, `drawable-v31` override status]
 - Finding, if risky: **Android 12+ static splash icon may render blurry** because the API 31+ resource resolves to a static `<vector>` / `<adaptive-icon>` / bitmap / layer-list instead of an `<animated-vector>` wrapper.
-- Fix direction: keep the theme resource name stable and add `res/drawable-v31/<name>.xml` as an `<animated-vector>` wrapper around the real vector; use an effectively no-op animator if a target is required.
+- Fix direction: keep the theme resource name stable and make it resolve to an `<animated-vector>` wrapper around the real vector on API 31+; no animators are required (an empty `<animated-vector>` is enough). The wrapper must reference a separately-named vector to avoid a self-reference loop.
 - References: <https://developer.android.com/develop/ui/views/launch/splash-screen>, <https://developer.android.com/reference/androidx/core/splashscreen/SplashScreen>, <https://issuetracker.google.com/issues/520672537>
 
 ## Category Details

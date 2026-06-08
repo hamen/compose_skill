@@ -132,49 +132,38 @@ LifecycleStartEffect(Unit) {
 
 ### Why it happens
 
-The Android 12+ splash screen (the platform `SplashScreen` API, and the `androidx.core:core-splashscreen` compat library) shows a single centered icon driven by the theme attribute `windowSplashScreenAnimatedIcon`. The official docs are explicit that this **"icon must be an `AnimatedVectorDrawable` (AVD) XML."** A plain static `<vector>`, `<adaptive-icon>`, bitmap, or `<layer-list>` is therefore being fed to the attribute off-spec.
+The Android 12+ splash screen (the platform `SplashScreen` API, and the `androidx.core:core-splashscreen` compat library) shows a single centered icon driven by the theme attribute `windowSplashScreenAnimatedIcon`. The official docs already say this icon should be an `AnimatedVectorDrawable`, and the platform's internals are why that matters.
 
-When the resolved icon is *not* an `AnimatedVectorDrawable`, the API 31+ starting-window path treats it like a launcher adaptive icon: it rasterizes the art near the **108 dp** unmasked adaptive-icon source size and then scales that bitmap up into the visible splash circle (**160 dp** inner diameter for an icon *with* a background; 192 dp *without*). Upscaling a 108 dp raster to fill a 160 dp circle is what makes otherwise crisp vector art look soft/blurry. Reported on the platform issue `https://issuetracker.google.com/issues/520672537`, present since Android 12 (API 31) and still reproducible on current versions at the time of writing — re-check against the issue before asserting it on a specific API level.
+Per the AOSP source quoted in the platform issue (`https://issuetracker.google.com/issues/520672537`), there are two render paths:
 
-Wrapping the same vector in an `<animated-vector>` keeps it on the AVD rendering path, which is drawn at full resolution instead of going through the adaptive-icon downscale. The animation itself does not need to do anything — being an AVD is what flips the path.
+- An `AnimatedVectorDrawable` is `Animatable`, so the system draws it on a **SurfaceView at full size**. Crisp.
+- Anything else — a static `<vector>`, `<adaptive-icon>`, bitmap, or `<layer-list>` — goes through an internal `ImmobileIconDrawable` optimization. That class pre-renders the icon into a bitmap at `starting_surface_default_icon_size` = **108 dp**, then scales that bitmap up to the visible icon size (**160 dp**, sometimes **192 dp**). Detail is thrown away at 108 dp *before* the upscale — that is why the otherwise crisp icon looks blurry.
+
+Scope, from the issue: present **since Android 12 (API 31)**, only on devices at **XHDPI (320 dpi) or higher** (the `loadInDetail == false` branch; lower-density devices happen to render at the final size and look fine). As of this writing the bug is **still open and unfixed** — Google has it as Assigned / P2 / Needs Info and has not yet reproduced it. Re-check the issue before asserting a specific fixed-in API level.
 
 ### Sizing the art (so the wrapper isn't wasted)
 
-The wrapper fixes the *raster path*; it does not fix art that was authored too small. For an animated splash icon the canvas should be **432 dp** (four times the 108 dp adaptive area) with the visible content living in the inner two-thirds (**288 dp**). Keep the `android:width`/`android:height`/`viewport*` of the wrapped vector consistent with that so the system isn't upscaling a tiny viewport.
+The wrapper fixes the *raster path*; it does not fix art that was authored too small. For an animated splash icon the official guidance is a **432 dp** canvas (four times the 108 dp adaptive area) with the visible content living in the inner two-thirds (**288 dp**). Keep the `android:width`/`android:height`/`viewport*` of the wrapped vector consistent with that so the system isn't upscaling a tiny viewport.
 
-### The fix — wrap the vector in a no-op animated-vector
+### The fix — wrap the vector in an animated-vector (no animators needed)
 
-Recommended shape (works on every API ≥ 21, single source of truth for the artwork, no `-v31` split needed):
+The reporter states it directly: *"It's enough to use an `<animated-vector>` with no animators."* You do **not** need a real animation, a `<target>`, an `objectAnimator`, or a named group — being an `AnimatedVectorDrawable` is the only thing that flips the render path.
+
+Recommended shape — works on every API ≥ 21, one copy of the artwork, no `-v31` split needed:
 
 ```xml
-<!-- res/drawable/ic_splash_logo.xml — the REAL artwork; the only copy of the paths.
-     A named <group> gives the no-op animator something valid to target. -->
+<!-- res/drawable/ic_splash_logo.xml — the REAL artwork; the only copy of the paths. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="288dp" android:height="288dp"
     android:viewportWidth="288" android:viewportHeight="288">
-    <group android:name="root">
-        <path android:fillColor="#FF6750A4" android:pathData="M..." />
-    </group>
+    <path android:fillColor="#FF6750A4" android:pathData="M..." />
 </vector>
 ```
 
 ```xml
-<!-- res/drawable/ic_splash.xml — what the theme points at.
-     References ic_splash_logo by a DIFFERENT name (see the recursion trap below). -->
+<!-- res/drawable/ic_splash.xml — what the theme points at. No animators. -->
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/ic_splash_logo">
-    <target android:name="root" android:animation="@animator/splash_icon_noop" />
-</animated-vector>
-```
-
-```xml
-<!-- res/animator/splash_icon_noop.xml — animates a group's translateX from 0 to 0. -->
-<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
-    android:duration="1"
-    android:propertyName="translateX"
-    android:valueFrom="0"
-    android:valueTo="0"
-    android:valueType="floatType" />
+    android:drawable="@drawable/ic_splash_logo" />
 ```
 
 ```xml
@@ -184,11 +173,9 @@ Recommended shape (works on every API ≥ 21, single source of truth for the art
 
 Notes that make this actually work:
 
-- **Avoid the self-reference trap.** The `<animated-vector>` must point `android:drawable` at a *different* resource name than the theme uses. A resource reference resolves by qualifier at runtime, so if `res/drawable-v31/ic_splash.xml` were an `<animated-vector android:drawable="@drawable/ic_splash">`, that inner `@drawable/ic_splash` would re-resolve to the v31 file itself — infinite recursion. Keeping the artwork under its own name (`ic_splash_logo`) sidesteps it entirely.
-- **Target a real named element.** An AVD `<target android:name="…">` binds to a `<group>`/`<path>` name *inside the wrapped vector*. The example animates the `root` group's `translateX` 0→0 — a genuine no-op that still binds cleanly. A target that names something the vector doesn't declare logs `Cannot find target` and is silently dropped.
-- **Shorthand:** an `<animated-vector>` with no `<target>` at all is valid and may be enough on its own (still an AVD instance). It's the smallest possible change, but since this whole thing is an undocumented workaround, **verify on a physical Android 12+ device** that the icon renders crisp before relying on the zero-target form.
-- **`-v31` split is optional.** If you specifically want a lighter static `<vector>` on API < 31, put the `<animated-vector>` only in `res/drawable-v31/` — but it must still reference a separately-named artwork vector (never `@drawable/ic_splash`), for the recursion reason above. The audit looks for an `<animated-vector>` resolving on API 31+; either layout satisfies it.
-- **Duration.** A 1 ms no-op needs nothing extra. If you ever add a real animation, the start delay is capped at 166 ms and the total at ~1000 ms via `windowSplashScreenAnimationDuration`.
+- **Avoid the self-reference trap.** The `<animated-vector>` must point `android:drawable` at a *different* resource name than the theme uses. Resource references resolve by qualifier at runtime, so an `<animated-vector android:drawable="@drawable/ic_splash">` saved as `res/drawable-v31/ic_splash.xml` would re-resolve `@drawable/ic_splash` to the v31 file itself — infinite recursion. Keeping the artwork under its own name (`ic_splash_logo`) sidesteps it entirely.
+- **`-v31` split is optional.** If you specifically want a lighter static `<vector>` on API < 31, put the `<animated-vector>` only in `res/drawable-v31/` — it must still reference a separately-named artwork vector (never `@drawable/ic_splash`), for the recursion reason above. The audit looks for an `<animated-vector>` resolving on API 31+; either layout satisfies it.
+- **If you *want* a real animation**, fine — add `<target>`s (each must name a real `<group>`/`<path>` in the wrapped vector or it logs `Cannot find target` and is dropped) and keep the start delay ≤ 166 ms and total ≤ ~1000 ms via `windowSplashScreenAnimationDuration`. But that's a design choice, not part of the blur fix.
 
 ### What not to do
 
