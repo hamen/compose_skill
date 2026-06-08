@@ -120,6 +120,28 @@ These ground:
 - when `CompositionLocal` is appropriate (tree-scoped data with sensible defaults) vs when explicit parameters are required
 - navigation patterns and where navigation calls belong
 
+### Android Launch UX Adjacent Findings
+
+- Android Developers: `Splash screens`
+  `https://developer.android.com/develop/ui/views/launch/splash-screen`
+- AndroidX API reference: `SplashScreen`
+  `https://developer.android.com/reference/androidx/core/splashscreen/SplashScreen`
+- Android API reference: `AnimatedVectorDrawable`
+  `https://developer.android.com/reference/android/graphics/drawable/AnimatedVectorDrawable`
+
+These ground non-scored launch-resource findings:
+
+- `windowSplashScreenAnimatedIcon` theme configuration. The official splash-screen doc states the **icon must be an `AnimatedVectorDrawable` XML** — so a static `<vector>` / `<adaptive-icon>` / bitmap / `<layer-list>` is an off-spec use of the attribute, which is the root of the blur, not merely a cosmetic bug.
+- Android 12+ / API 31+ splash-screen resource behavior: a non-AVD icon is rasterized near the 108 dp unmasked adaptive-icon size and upscaled into the visible splash circle.
+- animated-vector drawable requirements and resource shape (the wrapper must reference a separately-named vector to avoid a self-reference loop; an AVD `<target>` must name a real `<group>`/`<path>` in that vector).
+- splash icon sizing constraints, grounded in the official spec:
+  - icon **with** background: 240×240 dp canvas, **160 dp** inner circle.
+  - icon **without** background: 288×288 dp canvas, **192 dp** inner circle.
+  - animated icon canvas: **432 dp** (4× the 108 dp adaptive area), visible inner two-thirds **288 dp**.
+  - animation duration recommendation: start delay ≤ 166 ms, total ≤ ~1000 ms (`windowSplashScreenAnimationDuration`).
+
+Use the platform issue `https://issuetracker.google.com/issues/520672537` only as the bug/workaround evidence for the static splash icon blur problem. Cite at least one official Android URL alongside it in every report finding. The issue is present from Android 12 (API 31); confirm the current API range against the issue rather than asserting an open-ended "all API 31+" in a report.
+
 ## Supplemental Sources
 
 These are useful for extra examples and ecosystem framing, but they do **not** override the primary sources. Community blog posts age fast — when the supplemental and primary sources disagree, the primary AndroidX/Android docs win:

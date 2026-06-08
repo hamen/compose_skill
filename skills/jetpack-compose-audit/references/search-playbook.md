@@ -93,6 +93,33 @@ Notes to add:
 - Platform interop should stay at leaf composables with lifecycle handled by effects.
 - Do not deduct for Android-only APIs in Android-only modules. Only note the constraint when the repo is shared/KMP.
 
+### Android Launch UX / Splash Surface
+
+This is adjacent coverage, not one of the four score categories. Still run it during normal audits because launch resources are outside Kotlin and easy to miss.
+
+Search XML resources for:
+
+- `windowSplashScreenAnimatedIcon|android:windowSplashScreenAnimatedIcon`
+- `windowSplashScreenBackground|postSplashScreenTheme`
+- `<animated-vector|<vector|<adaptive-icon|<bitmap|<layer-list`
+
+Detection heuristic:
+
+1. Find theme/style files with the splash icon item:
+   `rg -n 'windowSplashScreenAnimatedIcon' -g 'themes.xml' -g 'styles.xml' -g '*.xml'`
+2. Resolve each `@drawable/name` reference by checking resource qualifiers in this order for Android 12+: `res/drawable-v31/name.xml`, then other API 31+ drawable qualifiers, then unqualified `res/drawable/name.xml` / density drawables.
+3. Read the resolved API 31+ drawable XML root. Pass when it is `<animated-vector>`.
+4. Flag when the API 31+ resource resolves to a static `<vector>`, `<adaptive-icon>`, bitmap, or `layer-list`, or when the unqualified static drawable is used with no `drawable-v31` animated-vector override.
+
+Report format:
+
+- Title: **Android Launch UX: Android 12+ static splash icon may render blurry**
+- Evidence: theme file line, referenced resource, resolved drawable file, and missing/present `drawable-v31` override.
+- Fix direction: keep the same `@drawable/name` in the theme and make it resolve to an `<animated-vector>` on API 31+ that wraps the real vector, with an effectively no-op animator if a target is required. The wrapper's `android:drawable` must point at a **differently-named** vector (referencing its own theme name self-resolves on API 31+ and loops), and any `<target>` must name a real `<group>`/`<path>` in that vector. The official docs require this icon to be an `AnimatedVectorDrawable`, so this is using the attribute as documented, not just a hack.
+- References: `https://developer.android.com/develop/ui/views/launch/splash-screen`, `https://developer.android.com/reference/androidx/core/splashscreen/SplashScreen`, and the platform issue `https://issuetracker.google.com/issues/520672537`.
+
+Do not subtract from Performance, State, Side Effects, or Composable API Quality. It may still belong in `Critical Findings` or `Prioritized Fixes` because it is user-visible and usually cheap to fix.
+
 ## 3. Performance Checks
 
 ### Search For

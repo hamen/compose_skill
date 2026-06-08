@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 3.0.0 · released 2026-05-29** — Breaking repository-layout release. Both skills now use the direct modern layout `skills/<name>/SKILL.md`, which is the canonical shape for `npx skills` and the pattern to copy into sibling repositories such as Material Design. `compose-agent` ships as `2.0.0`.
+**Version 3.1.0 · released 2026-06-08** — Android Launch UX release. The audit now flags Android 12+ static splash icons that can render blurry and recommends the `drawable-v31` animated-vector workaround. `compose-agent` ships as `2.1.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -11,6 +11,17 @@ Built for Claude Code, Cursor, and any agent that loads the Anthropic skill form
 ---
 
 ## What's new
+
+### 3.1.0 — 2026-06-08
+
+**Added — Android 12+ splash icon blur detection.**
+
+- **Normal audit coverage**: `jetpack-compose-audit` now scans Android splash-screen theme resources during the regular audit flow. No separate command is needed.
+- **Resource-aware finding**: the audit resolves `windowSplashScreenAnimatedIcon` references and flags the risky shape where API 31+ uses a static `<vector>`, `<adaptive-icon>`, bitmap, or layer-list instead of a `drawable-v31` `<animated-vector>` wrapper.
+- **Non-scored, still actionable**: Android Launch UX remains outside the four numeric Compose categories, but concrete splash icon risks can appear in `Critical Findings` and `Prioritized Fixes`.
+- **Grounded in the spec, not just the bug**: the docs lead with the official requirement that `windowSplashScreenAnimatedIcon` **must be an `AnimatedVectorDrawable`** — a static vector falls onto the adaptive-icon raster path (≈108 dp rasterized, upscaled into the 160 dp inner circle), which is what looks blurry. Includes the full sizing spec (160/192 dp inner circles, 432 dp AVD canvas, 288 dp visible, duration caps).
+- **Corrected, copy-pasteable workaround**: `compose-agent` ships a self-consistent example and calls out the two traps that break naive attempts — the `drawable-v31` **self-reference loop** (a wrapper must point at a *differently-named* vector) and AVD `<target>` names that must bind to a real `<group>`/`<path>`. The no-op animator targets a named group's `translateX` 0→0.
+- **Versions.** `jetpack-compose-audit` → `3.1.0`. `compose-agent` → `2.1.0`.
 
 ### 3.0.0 — 2026-05-29
 
@@ -58,6 +69,7 @@ Run the skill on a Compose repo and you walk away with:
 - **`COMPOSE-AUDIT-REPORT.md`** written at the target root — per-category scoring, evidence file paths, line numbers, and prioritized fixes.
 - **A chat summary** that mirrors the report's top three fixes — same file paths, same doc links, same predicted impact. Act on the chat alone if you're short on time.
 - **Measured stability numbers** from the Compose Compiler — module-wide `skippable%`, named-only `skippable%`, the unstable-class list, and the per-module Strong Skipping state inferred from compiler version plus explicit flags.
+- **Android Launch UX findings** for static Android 12+ splash icons that can render blurry when a `drawable-v31` animated-vector wrapper is missing.
 - **A score you can defend.** Every deduction carries an official Android Developers URL. No "trust me" findings.
 
 ---
@@ -74,6 +86,8 @@ Four categories, weighted for an app repo. Each scored `0-10`; overall on `0-100
 | **Composable API quality** | 20% | Modifier conventions, parameter order, slot APIs, `CompositionLocal` usage, `Modifier.Node`, **`animationSpec` exposure**, `@Preview` coverage, hardcoded strings / magic numbers |
 
 Score bands: `0-3` fail · `4-6` needs work · `7-8` solid · `9-10` excellent.
+
+Adjacent, non-scored coverage includes UI tests/previews, focus/keyboard, KMP/CMP, and Android Launch UX resources. Those findings do not change the 0-100 score, but they can still show up in Critical Findings and Prioritized Fixes when they are concrete and user-visible.
 
 ---
 
@@ -95,6 +109,7 @@ Concrete smells the rubric targets, with realistic wins:
 | Hardcoded strings and magic numbers in reusable components | i18n + dark-mode + accessibility ready; testable |
 | `rememberSaveable` inside a `LazyListScope` item factory | No more `TransactionTooLargeException` when the list grows |
 | `Scaffold { innerPadding -> ... }` content that ignores `innerPadding` | Content stops drawing behind the `TopAppBar` / system bars |
+| Static Android 12+ splash icon in `windowSplashScreenAnimatedIcon` | Wrap with a `drawable-v31` animated-vector so the launch icon stays crisp instead of being rasterized small and scaled up |
 
 The report lists every occurrence with file path and line number, not just the category.
 
@@ -228,6 +243,8 @@ Top 3 fixes
 
 **In scope.** Jetpack Compose on Android, Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping default).
 
+Also in normal audit coverage: Android splash-screen launch resources, specifically `windowSplashScreenAnimatedIcon` and `drawable-v31` animated-vector overrides for the Android 12+ static-icon blur workaround. This is reported as Android Launch UX, not as a scored Compose category.
+
 **Out of scope** — the skill will call these out as a note rather than silently produce thin coverage:
 
 - Material 3 compliance, theming, color/typography — defer to the `material-3` skill.
@@ -341,7 +358,7 @@ The thirteen reference files are deliberately loadable in isolation. Scoping a r
 | Compose UI tests, screenshot tests, semantics, previews | `compose-agent focus on testing` |
 | focus, keyboard, D-pad, TV/desktop navigation | `compose-agent focus on focus` |
 | KMP/CMP source sets, `expect`/`actual`, platform interop | `compose-agent focus on kmp` |
-| deprecated / soft-deprecated APIs | `compose-agent focus on api` |
+| deprecated / soft-deprecated APIs and Android launch resources | `compose-agent focus on api` |
 | idiomatic Kotlin / Android style | `compose-agent focus on kotlin` |
 
 ### What review mode gives back
@@ -389,6 +406,18 @@ skills/compose-agent/
 ---
 
 ## Changelog
+
+### 3.1.0 — 2026-06-08
+
+**Added — Android Launch UX splash icon audit.**
+
+- **Static Android 12+ splash icon detection.** Normal audits now scan `res/values*/themes.xml` / `styles.xml` for `windowSplashScreenAnimatedIcon`, resolve the referenced resource, and check whether the API 31+ drawable is an `<animated-vector>`.
+- **Risk shape.** The audit flags static `<vector>`, `<adaptive-icon>`, bitmap, and layer-list splash icons on Android 12+ when there is no `res/drawable-v31/<name>.xml` animated-vector override.
+- **Report shape.** A new non-scored `Android Launch UX` adjacent finding can appear in `COMPOSE-AUDIT-REPORT.md`, `Critical Findings`, and `Prioritized Fixes` when concrete evidence exists.
+- **Spec-grounded framing.** Docs lead with the official requirement that `windowSplashScreenAnimatedIcon` must be an `AnimatedVectorDrawable`; a static vector is rasterized near 108 dp and upscaled into the 160 dp inner circle. Includes the full official sizing spec (160/192 dp inner circles, 432 dp AVD canvas, 288 dp visible area, 166 ms / ~1000 ms duration caps).
+- **Authoring guidance.** `compose-agent` ships a corrected, copy-pasteable workaround: keep the theme `@drawable/<name>` stable, resolve it to a no-op `<animated-vector>` on API 31+, and target a real named `<group>`'s `translateX` 0→0. It documents the two traps that break naive attempts — the `drawable-v31` self-reference loop (wrap a *differently-named* vector) and `<target>` names that must bind to a real `<group>`/`<path>` — plus a zero-`<target>` shorthand to verify on device.
+- **CI guardrail.** `bin/ci` now fails if either skill drops the Android 12+ static splash icon blur coverage.
+- **Versions.** `jetpack-compose-audit` → `3.1.0`. `compose-agent` → `2.1.0`.
 
 ### 3.0.0 — 2026-05-29
 

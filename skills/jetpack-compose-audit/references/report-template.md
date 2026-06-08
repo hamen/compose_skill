@@ -40,6 +40,18 @@ Example format:
    - Fix direction: [brief recommendation]
    - References: <https://developer.android.com/develop/ui/compose/performance/bestpractices>
 
+## Adjacent Findings
+
+Use this section for concrete, user-visible problems the audit intentionally tracks outside the four numeric Compose categories. Do not change the 0-100 score for these findings, but do include them in `Critical Findings` or `Prioritized Fixes` when they are among the highest-leverage fixes.
+
+### Android Launch UX
+
+- Android 12+ splash icon status: [clean / risky / not configured / not inspected]
+- Evidence: [`windowSplashScreenAnimatedIcon` theme item, resolved drawable file, `drawable-v31` override status]
+- Finding, if risky: **Android 12+ static splash icon may render blurry** because the API 31+ resource resolves to a static `<vector>` / `<adaptive-icon>` / bitmap / layer-list instead of an `<animated-vector>` wrapper.
+- Fix direction: keep the theme resource name stable and add `res/drawable-v31/<name>.xml` as an `<animated-vector>` wrapper around the real vector; use an effectively no-op animator if a target is required.
+- References: <https://developer.android.com/develop/ui/views/launch/splash-screen>, <https://developer.android.com/reference/androidx/core/splashscreen/SplashScreen>, <https://issuetracker.google.com/issues/520672537>
+
 ## Category Details
 
 ### Performance — [X/10]
@@ -131,6 +143,7 @@ Example format:
 - [state if confidence is medium/low]
 - [state if some categories had limited surface area]
 - Adjacent coverage notes: [UI tests / screenshot tests / focus-keyboard / KMP-CMP surfaces observed; state `none observed` if absent]
+- Android Launch UX resources: [clean / risky / not configured / not inspected; include the splash icon resource path when configured]
 - Strong Skipping mode: [on / off / mixed across modules; note any explicit module-level opt-in / opt-out]
 - Weight choice: [default 35/25/20/20, or note any deviation and why]
 - Renormalization: [list any N/A categories and the renormalized weights]

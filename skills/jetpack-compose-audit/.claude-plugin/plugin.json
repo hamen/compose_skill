@@ -1,7 +1,7 @@
 {
   "name": "jetpack-compose-audit",
-  "version": "3.0.0",
-  "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score, per-category 0-10 scores, a COMPOSE-AUDIT-REPORT.md with every deduction cited against developer.android.com, and coverage notes for UI tests, focus/keyboard, and Compose Multiplatform surfaces.",
+  "version": "3.1.0",
+  "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score, per-category 0-10 scores, a COMPOSE-AUDIT-REPORT.md with every deduction cited against developer.android.com, and coverage notes for UI tests, focus/keyboard, Compose Multiplatform, and Android launch UX surfaces.",
   "author": {
     "name": "Ivan Morgillo"
   },
@@ -15,6 +15,7 @@
     "compose-compiler",
     "strong-skipping",
     "stability",
+    "splash-screen",
     "ui-testing",
     "focus",
     "kotlin-multiplatform"

@@ -1,6 +1,6 @@
 ---
 name: jetpack-compose-audit
-description: Audit Android Jetpack Compose repositories for performance, state management, side effects, and composable API quality. Scans source code, scores each category from 0-10, writes a strict markdown report, and summarizes the most important fixes. Use when reviewing a Compose codebase, rating repository quality, inspecting recomposition/state issues, or running a Compose audit.
+description: Audit Android Jetpack Compose repositories for performance, state management, side effects, composable API quality, and adjacent Android launch UX resource risks such as blurry Android 12+ splash icons. Scans source code, scores each category from 0-10, writes a strict markdown report, and summarizes the most important fixes. Use when reviewing a Compose codebase, rating repository quality, inspecting recomposition/state issues, or running a Compose audit.
 allowed-tools: Read, Glob, Grep, Write, Bash, Agent
 argument-hint: "[repo path or module path]"
 ---
@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 3.0.0 — released 2026-05-29. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 3.1.0 — released 2026-06-08. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -21,6 +21,8 @@ It is intentionally focused on four categories:
 This skill does **not** score design or Material 3 compliance in v1. If the audit surfaces likely design-system problems, recommend a follow-up audit with the `material-3` skill (reference implementation: <https://github.com/hamen/material-3-skill>).
 
 Testing, focus/keyboard navigation, and Compose Multiplatform are **coverage notes**, not score categories. Map those surfaces when present, flag obvious risk, and recommend the focused `compose-agent` references (`testing`, `focus`, `kmp`) as follow-up work. Do not fold them into the 0-100 score unless the same root cause clearly affects one of the four scored categories.
+
+Android launch UX resources are also adjacent coverage, not a score category. Always scan splash-screen theme resources; if Android 12+ could render a static splash icon blurry, include it as an `Android Launch UX` finding and allow it into `Critical Findings` / `Prioritized Fixes` when the evidence is concrete.
 
 ## Out Of Scope In v1
 
@@ -105,6 +107,7 @@ Before scoring, identify:
 - UI test, screenshot test, focus/keyboard test, and semantics-test locations
 - baseline-profile related modules or config if present
 - KMP / Compose Multiplatform source sets (`commonMain`, `androidMain`, `iosMain`, `desktopMain`, `wasmJsMain`) if present
+- Android splash-screen themes and drawable resources (`res/values*/themes.xml`, `styles.xml`, `drawable-v31`) if present
 
 ### 3. Build A Compose Surface Map
 
@@ -122,8 +125,28 @@ Look for:
 - focus APIs: `FocusRequester`, `focusRequester`, `focusProperties`, `focusable`, `onFocusChanged`, `onPreviewKeyEvent`, `onKeyEvent`
 - UI testing APIs: `createComposeRule`, `createAndroidComposeRule`, `onNodeWithText`, `assertIsDisplayed`, `assertIsFocused`, screenshot test rules
 - KMP/CMP indicators: `commonMain`, `expect`, `actual`, `AndroidView`, `UIKitView`, platform services passed into common UI
+- Android launch resources: `windowSplashScreenAnimatedIcon`, `android:windowSplashScreenAnimatedIcon`, `drawable-v31`, `animated-vector`
 
 If the repo is large, audit by category or by module. If subagents are available, parallelize category scans by spawning `Explore`-type subagents (no write tools) and merge the findings.
+
+### 3a. Audit Android Launch UX Resources
+
+This is non-scored adjacent coverage, but it should run on every normal audit because the failure is user-visible and cheap to miss in Kotlin-only scans.
+
+Look for:
+
+- `windowSplashScreenAnimatedIcon` and `android:windowSplashScreenAnimatedIcon` in `res/values*/themes.xml` and `res/values*/styles.xml`
+- referenced drawables such as `@drawable/ic_splash`
+- API-qualified overrides in `res/drawable-v31/`
+- drawable XML roots: `<animated-vector>`, `<vector>`, `<adaptive-icon>`, `<bitmap>`, `<layer-list>`
+
+The official docs require this icon to be an `AnimatedVectorDrawable` XML; a static icon is an off-spec use of the attribute and falls onto the adaptive-icon raster path (rasterized near 108 dp, upscaled into the 160 dp inner circle), which is what looks blurry. Flag a finding when all of these are true:
+
+1. A theme sets `windowSplashScreenAnimatedIcon` for an Android app.
+2. The API 31+ resource resolution points to a static icon (`<vector>`, `<adaptive-icon>`, bitmap, or a layer-list around those), or there is no `drawable-v31` override for the referenced splash icon.
+3. The resource is not already an `<animated-vector>` on API 31+.
+
+Report it as **Android Launch UX: Android 12+ static splash icon may render blurry**, not as a Compose score deduction. Evidence should include the theme item, the resolved drawable file, and whether the `res/drawable-v31` animated-vector override is missing. The fix direction is to keep the theme's `@drawable/<name>` stable and have it resolve to an `<animated-vector>` on API 31+ that wraps the real vector; the animation can be effectively no-op. Two correctness caveats worth carrying into the report: the wrapper must reference a **separately-named** vector (a wrapper that references its own theme name re-resolves to itself on API 31+ and loops), and any AVD `<target>` must name a real `<group>`/`<path>` in the wrapped vector. Cite the Android splash-screen docs, the AndroidX `SplashScreen` reference, and, when useful, the platform issue `https://issuetracker.google.com/issues/520672537`. The bug dates to Android 12 (API 31); confirm the live API range against the issue rather than asserting it open-endedly.
 
 ### 4. Generate Compose Compiler Reports (Automatic)
 

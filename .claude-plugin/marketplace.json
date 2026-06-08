@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "compose-agent",
-      "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, and idiomatic Kotlin.",
+      "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, Android launch resources, and idiomatic Kotlin.",
       "author": { "name": "Ivan Morgillo" },
       "category": "development",
       "source": {
@@ -16,11 +16,11 @@
         "url": "https://github.com/hamen/compose_skill.git",
         "path": "skills/compose-agent"
       },
-      "tags": ["android", "jetpack-compose", "kotlin", "ui-testing", "focus", "kotlin-multiplatform", "agent-skill"]
+      "tags": ["android", "jetpack-compose", "kotlin", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen", "agent-skill"]
     },
     {
       "name": "jetpack-compose-audit",
-      "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score with every deduction cited against developer.android.com and coverage notes for UI tests, focus/keyboard, and Compose Multiplatform surfaces.",
+      "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score with every deduction cited against developer.android.com and coverage notes for UI tests, focus/keyboard, Compose Multiplatform, and Android launch UX surfaces.",
       "author": { "name": "Ivan Morgillo" },
       "category": "development",
       "source": {
@@ -28,7 +28,7 @@
         "url": "https://github.com/hamen/compose_skill.git",
         "path": "skills/jetpack-compose-audit"
       },
-      "tags": ["android", "jetpack-compose", "audit", "performance", "ui-testing", "focus", "kotlin-multiplatform"]
+      "tags": ["android", "jetpack-compose", "audit", "performance", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen"]
     }
   ]
 }

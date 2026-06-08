@@ -81,6 +81,35 @@ if (!composeSkill.includes(`version: "${composeVersion}"`)) {
   throw new Error('compose-agent SKILL.md metadata version does not match manifest version');
 }
 
+const composeAgentDocs = [...files]
+  .filter((file) => file.startsWith('skills/compose-agent/') && file.endsWith('.md'))
+  .map((file) => readFileSync(file, 'utf8'))
+  .join('\n');
+if (
+  !composeAgentDocs.includes('windowSplashScreenAnimatedIcon') ||
+  !/animated[- ]vector/i.test(composeAgentDocs) ||
+  !/108\s*dp/i.test(composeAgentDocs) ||
+  !/160\s*dp/i.test(composeAgentDocs) ||
+  !/blurr/i.test(composeAgentDocs)
+) {
+  throw new Error('compose-agent docs must cover the Android 12+ static splash icon blur workaround');
+}
+
+const auditDocs = [...files]
+  .filter((file) => file.startsWith('skills/jetpack-compose-audit/') && file.endsWith('.md'))
+  .map((file) => readFileSync(file, 'utf8'))
+  .join('\n');
+if (
+  !auditDocs.includes('Android Launch UX') ||
+  !auditDocs.includes('windowSplashScreenAnimatedIcon') ||
+  !auditDocs.includes('drawable-v31') ||
+  !/static splash icon may render blurry/i.test(auditDocs) ||
+  !/non-scored|not score/i.test(auditDocs) ||
+  !auditDocs.includes('https://issuetracker.google.com/issues/520672537')
+) {
+  throw new Error('jetpack-compose-audit docs must detect and report the Android 12+ static splash icon blur risk');
+}
+
 const auditSkill = readFileSync('skills/jetpack-compose-audit/SKILL.md', 'utf8');
 const auditVersion = JSON.parse(readFileSync('skills/jetpack-compose-audit/.claude-plugin/plugin.json', 'utf8')).version;
 if (!auditSkill.includes(`**Skill version:** ${auditVersion}`)) {

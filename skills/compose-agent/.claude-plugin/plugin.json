@@ -1,7 +1,7 @@
 {
   "name": "compose-agent",
-  "version": "2.0.0",
-  "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, and idiomatic Kotlin. Targets the mistakes LLMs actually make in Compose code.",
+  "version": "2.1.0",
+  "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, Android launch resources, and idiomatic Kotlin. Targets the mistakes LLMs actually make in Compose code.",
   "author": {
     "name": "Ivan Morgillo"
   },
@@ -16,6 +16,7 @@
     "ui-testing",
     "focus",
     "kotlin-multiplatform",
+    "splash-screen",
     "agent-skill",
     "best-practices"
   ]
