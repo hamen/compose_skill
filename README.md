@@ -1,4 +1,17 @@
-# Jetpack Compose Audit Skill
+<h1 align="center">Compose Skill Suite</h1>
+
+<p align="center">
+  <strong>Jetpack Compose audit + coding-agent skills for Claude Code, Codex, Cursor, and Anthropic-style skill loaders.</strong>
+</p>
+
+<p align="center">
+  <a href="./bin/ci"><img alt="bin/ci passing" src="https://img.shields.io/badge/bin%2Fci-passing-2ea043"></a>
+  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.0.0"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/hamen/compose_skill?color=0a7f60"></a>
+  <img alt="Skills" src="https://img.shields.io/badge/skills-2-7c3aed">
+  <img alt="Compose animation ready" src="https://img.shields.io/badge/Compose-animation%20ready-f97316">
+  <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
+</p>
 
 **Version 4.0.0 · released 2026-06-12** — Major animation release. Compose animation is now a first-class surface across the suite: `compose-agent` gains a dedicated `animation.md` reference targeting the mistakes LLMs make most, while `jetpack-compose-audit` surfaces animation performance and side-effect defects in the scored report. Both skills ship as `4.0.0`.
 
