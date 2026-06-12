@@ -1,6 +1,6 @@
 ---
 name: jetpack-compose-audit
-description: Audit Android Jetpack Compose repositories for performance, state management, side effects, composable API quality, and adjacent Android launch UX resource risks such as blurry Android 12+ splash icons. Scans source code, scores each category from 0-10, writes a strict markdown report, and summarizes the most important fixes. Use when reviewing a Compose codebase, rating repository quality, inspecting recomposition/state issues, or running a Compose audit.
+description: Audit Android Jetpack Compose repositories for performance, animation phase correctness, state management, side effects, composable API quality, and adjacent Android launch UX resource risks such as blurry Android 12+ splash icons. Scans source code, scores each category from 0-10, writes a strict markdown report, and summarizes the most important fixes. Use when reviewing a Compose codebase, rating repository quality, inspecting recomposition/state issues, animation issues, or running a Compose audit.
 allowed-tools: Read, Glob, Grep, Write, Bash, Agent
 argument-hint: "[repo path or module path]"
 ---
@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 3.1.0 — released 2026-06-08. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 4.0.0 — released 2026-06-12. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -310,6 +310,8 @@ Include:
 
 - overall score (and the delta vs. any prior `COMPOSE-AUDIT-REPORT*.md` at the same path, if present)
 - one-line judgment for each category, with the applied ceiling if any (e.g. "Performance 8/10 — capped by the SSM-on table: recreated `FeedItemUiModel` params")
+- when animation defects affected Performance, name them explicitly in the Performance line (e.g. "Performance 6/10 — animated `offset` reads recompose `DrawerContent` every frame")
+- when animation defects affected Side Effects, name them explicitly in the Side Effects line (e.g. "Side Effects 5/10 — `scope.launch { animateTo(...) }` in composition on `SettingsScreen`")
 - compiler-report highlights when Step 4 succeeded: Strong Skipping on/off (or mixed across modules), which ceiling table was applied, module-wide `skippable%`, named-only `skippable%`, which metric actually bound the cap, count of unstable shared types, and any module that failed to build
 - **top three actionable fixes**, each with:
   - the concrete change ("add `key = { it.id }` to `items(...)` in `feed/FeedList.kt:42`")
@@ -317,7 +319,7 @@ Include:
   - one official doc URL from `references/canonical-sources.md`
   - expected impact that matches the active ceiling table: on SSM-off, frame it in terms of named-only `skippable%` / unstable-param reductions; on SSM-on, frame it in terms of removing instance-recreation churn, fixing expensive / broken `equals()`, or clearing the binding cap
 - whether a `material-3` audit is worth running next
-- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, or `compose-agent focus on kmp`
+- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, `compose-agent focus on kmp`, or `compose-agent focus on animation`
 
 The top-three fixes in the chat summary MUST be the same items as the report's `Prioritized Fixes` list (same file paths, same doc links). Do not add generic advice in chat that isn't in the written report.
 

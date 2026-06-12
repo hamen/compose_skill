@@ -213,19 +213,22 @@ Rules:
 
 ## Animations Driven From Effects
 
-Target-driven animations belong in `LaunchedEffect(target)`, not `rememberCoroutineScope().launch`:
+Target-driven animations belong in `LaunchedEffect(target)`, not `rememberCoroutineScope().launch` from composition. Keep `rememberCoroutineScope()` for event- or gesture-driven animation launched from a handler.
 
 ```kotlin
-// Wrong — launches a new animation on every click, no restart logic
+// Wrong — launching target-driven animation work during composition
 val anim = remember { Animatable(0f) }
 val scope = rememberCoroutineScope()
-Button(onClick = { scope.launch { anim.animateTo(1f) } }) { ... }
+scope.launch { anim.animateTo(if (expanded) 1f else 0f) }
 
 // Right — every time `expanded` flips, the in-flight animation cancels and restarts
 val anim = remember { Animatable(0f) }
 LaunchedEffect(expanded) {
     anim.animateTo(if (expanded) 1f else 0f)
 }
+
+// Also fine — event-driven animation from a handler
+Button(onClick = { scope.launch { anim.animateTo(1f) } }) { ... }
 ```
 
 For value-based animations (`animate*AsState`), no effect is needed at all — the API is already effect-shaped internally.

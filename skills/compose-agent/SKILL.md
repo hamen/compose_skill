@@ -1,12 +1,12 @@
 ---
 name: compose-agent
-description: "Helps AI coding assistants write modern Jetpack Compose: correct state, side effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, idiomatic Kotlin, and well-shaped composable APIs. Targets the mistakes LLMs actually make in Compose code. Use when reading, writing, or reviewing Compose projects."
+description: "Helps AI coding assistants write modern Jetpack Compose: correct state, side effects, performance-aware modifiers, Navigation 3, coroutines on lifecycle, animations, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, idiomatic Kotlin, and well-shaped composable APIs. Targets the mistakes LLMs actually make in Compose code. Use when reading, writing, or reviewing Compose projects."
 license: MIT
 allowed-tools: Read, Glob, Grep, Edit, Write, Bash
-argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle', 'testing', 'focus', 'kmp']"
+argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle', 'animation', 'testing', 'focus', 'kmp']"
 metadata:
   author: Ivan Morgillo
-  version: "2.1.0"
+  version: "4.0.0"
 ---
 
 # Compose Agent
@@ -36,13 +36,14 @@ If the repo pins older versions, match the repo — but call out what the modern
 10. Review **UI testing patterns** using `references/testing.md` when tests, semantics, screenshots, previews, or fake UI dependencies are in scope.
 11. Review **focus and keyboard / D-pad navigation** using `references/focus.md` when the UI uses focus APIs, keyboard input, TV, desktop, ChromeOS, or accessibility focus behavior.
 12. Review **Compose Multiplatform / KMP boundaries** using `references/kmp.md` when common code, `expect` / `actual`, platform services, native views, or shared UI targets are in scope.
-13. Final **Kotlin style** pass using `references/kotlin.md`.
+13. Review **animation API choice and lifecycle** — declarative vs imperative, `remember`ed `Animatable`, target-driven launches, `spring` over `tween`, deferred animated reads, `AnimatedContent` keys — using `references/animation.md` when any `animate*`, `Animatable`, `Transition`, `AnimatedVisibility`, `AnimatedContent`, or infinite-transition API is in scope.
+14. Final **Kotlin style** pass using `references/kotlin.md`.
 
 If doing a partial review, load only the relevant reference files — each references file is designed to be read in isolation.
 
 ## Core Instructions
 
-- Keep composables **side-effect free** in composition. All I/O, state mutation outside remembered objects, analytics, animation launches, etc. belong in `LaunchedEffect`, `DisposableEffect`, `produceState`, `rememberCoroutineScope { }.launch`, or the ViewModel.
+- Keep composables **side-effect free** in composition. All I/O, state mutation outside remembered objects, analytics, etc. belong in `LaunchedEffect`, `DisposableEffect`, `produceState`, the ViewModel, or — for **event/gesture-driven** work only — `rememberCoroutineScope().launch` inside a handler. Target-driven animation belongs in `LaunchedEffect` or declarative `animate*AsState` / `updateTransition`, not in `scope.launch` from the composition body. See `references/animation.md` and `references/effects.md`.
 - Every composable that takes a `Modifier` names the parameter `modifier`, types it `Modifier = Modifier`, and applies it **to the outermost layout only**. Never create a `modifier` parameter you do not forward.
 - Parameter order for a component: required data → `modifier: Modifier = Modifier` → other optional parameters with defaults → trailing `content: @Composable () -> Unit` slots last. One `modifier` parameter per component.
 - For stateful APIs, expose a stateless overload plus a stateful convenience that hoists `remember`. See `references/component-api.md`.
@@ -52,6 +53,7 @@ If doing a partial review, load only the relevant reference files — each refer
 - Never put a lambda in a `CompositionLocal`. Use explicit parameters.
 - Do not introduce third-party libraries without asking first. The Accompanist libraries covering pager, swipe-refresh, flow layout, and system UI controller are **deprecated** — the functionality is in AndroidX now (`HorizontalPager`, `PullToRefreshBox`, `FlowRow`/`FlowColumn`, `enableEdgeToEdge()`).
 - When an element's background reads from `MaterialTheme.colorScheme.*` (directly or via a blend), its text and icon colors must read from the same theming source. Hard-coded `Color.Black` / `Color.White` / raw ARGB literals over theme-driven backgrounds are dark-mode regressions. See `references/component-api.md`.
+- Animate declaratively first. Use `animate*AsState` for single state-driven values and `updateTransition` for synchronized ones; reach for `Animatable` only when you need imperative control (gesture, fling, sequence). Always `remember` an `Animatable`, launch target-driven animations from `LaunchedEffect` (never `scope.launch` in composition to react to state), prefer `spring()` over `tween` for interruptible motion, and read animated values in the layout/draw phase (lambda modifiers / `graphicsLayer`) so the animation does not recompose every frame. See `references/animation.md`.
 
 ## Output Format (review mode)
 
@@ -136,6 +138,7 @@ When the agent is **writing new code** rather than reviewing, the same rules app
 - If it launches work, is that work in a `LaunchedEffect`, `produceState`, or the ViewModel — not in the composition body?
 - If it collects a Flow, is it `collectAsStateWithLifecycle()`?
 - Is the parameter order: data → modifier → other → content slot last?
+- If it animates, is the API declarative first, remembered where needed, lifecycle-aware, and phase-correct?
 - If it needs focus, testing, or platform-specific behavior, did you load the focused reference before judging?
 
 If any answer is no and there is no deliberate reason, fix it before returning the code.
@@ -165,6 +168,7 @@ If the user needs any of the above, narrow the scope and say so.
 - `references/testing.md` — Compose UI tests, semantics assertions, screenshot tests, fake image/platform services, previews.
 - `references/focus.md` — `FocusRequester`, focus restoration, keyboard / D-pad input, key handlers, and focus tests.
 - `references/kmp.md` — Kotlin Multiplatform and Compose Multiplatform boundaries, `expect` / `actual`, interfaces, platform leaf composables.
+- `references/animation.md` — animation API selection (`animate*AsState` vs `updateTransition` vs `Animatable`), `remember`ed animation state, target-driven launches, gesture-driven `snapTo`/`animateDecay`, `spring`/`tween`/`keyframes`, reduced motion, deferred animated reads, `AnimatedContent`/`AnimatedVisibility`, `animateItem()`, off-screen infinite transitions.
 - `references/kotlin.md` — Kotlin coding conventions and Android Kotlin style the LLM keeps missing.
 
 ## Primary Sources

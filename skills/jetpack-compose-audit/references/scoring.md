@@ -90,6 +90,7 @@ Reward:
 - animated values read through lambda modifiers (`Modifier.graphicsLayer { ... }`, `Modifier.offset { ... }`, `Modifier.drawBehind { ... }`) so per-frame updates stay in the layout/draw phase and skip recomposition → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
 - `Animatable` held in `remember { Animatable(...) }` and driven from a `LaunchedEffect` — state survives recomposition, animation is cancelled on dispose → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
 - `AnimatedContent` used when the call site needs custom enter/exit or size-aware content transforms, while `Crossfade` is used for standard fade-only content swaps → [animation](https://developer.android.com/develop/ui/compose/animation/introduction)
+- multiple properties that animate off the same state change share one `updateTransition` instead of independent `animate*AsState` calls that can drift out of sync → [animation](https://developer.android.com/develop/ui/compose/animation/value-based#updatetransition)
 
 Deduct for:
 
@@ -116,6 +117,9 @@ Deduct for:
 - `Animatable(...)` created inside a composable body without `remember { Animatable(...) }` (and not hoisted from a state holder) — the animation state is rebuilt on recomposition, which restarts the animation and drops in-flight velocity/target → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
 - per-frame animated values read in the composition body and piped into non-lambda modifiers (`Modifier.offset(x.value.dp)`, `Modifier.alpha(alpha.value)`, `Modifier.rotate(rot.value)`). Every frame triggers recomposition of the caller instead of only re-laying-out or re-drawing. Prefer lambda-form `Modifier.offset { IntOffset(x.value.roundToInt(), 0) }` / `Modifier.graphicsLayer { alpha = alphaAnim.value; rotationZ = rot.value }` → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
 - `rememberInfiniteTransition()` hosted in a composable that stays in composition while offscreen (e.g. inside a `Scaffold` content that does not unmount on tab switch) — the animation keeps running until the host is removed from composition, creating needless offscreen work. Host it inside `AnimatedVisibility` / lazy-list item, or gate with an `if (visible) { ... }` branch → [animation](https://developer.android.com/develop/ui/compose/animation/value-based)
+- several `animate*AsState` calls in the same composable all keyed off the same boolean/enum when `updateTransition` would keep them synchronized — light deduction when the drift is user-visible (alpha/scale/color finishing at different times) → [animation](https://developer.android.com/develop/ui/compose/animation/value-based#updatetransition)
+
+When any of these animation rules affects the Performance score, name it in the Performance section as **Animation phase correctness** rather than folding it into a generic recomposition note. Readers should be able to see at a glance whether animation contributed to the score.
 
 Suggested interpretation:
 

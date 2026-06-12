@@ -136,10 +136,12 @@ Safe in composition: simple field reads (`.size`, `.length`, `.isEmpty()`, index
 
 ## Animations
 
-From `references/effects.md` — two core rules:
+See `references/animation.md` for API choice, `updateTransition`, `AnimatedContent`, lazy-list item animation, infinite transitions, gesture-driven `Animatable`, and reduced motion.
 
-- Target-driven: `LaunchedEffect(target) { animatable.animateTo(target) }`, not `scope.launch`.
-- Per-frame reads: lambda-form modifiers (`Modifier.offset { ... }`, `Modifier.graphicsLayer { ... }`).
+Core performance rules:
+
+- Target-driven: `LaunchedEffect(target) { animatable.animateTo(target) }`, or better, `animate*AsState` / `updateTransition` with no effect at all. Event-driven animations launched from click or gesture handlers can use `rememberCoroutineScope()`.
+- Per-frame reads: lambda-form modifiers (`Modifier.offset { ... }`, `Modifier.graphicsLayer { ... }`, `Modifier.drawBehind { ... }`). Non-lambda `Modifier.padding(animatedDp)` has the same composition-phase problem as `Modifier.offset(x = dx)` — prefer offset/translation instead.
 
 For `Crossfade` vs `AnimatedContent`:
 
@@ -160,7 +162,7 @@ Shipping a baseline profile is still one of the biggest end-user performance win
 
 - `mutableStateOf<(Int|Long|Float|Double)>` — typed-primitive miss
 - `remember\s*\{\s*mutableStateOf\s*\(\s*\w+\s*\)\s*\}` — parameter-seeded state (usually a bug — see `state.md`)
-- `Modifier\.offset\(` / `Modifier\.alpha\(` / `Modifier\.scale\(` / `Modifier\.rotate\(` — look at the argument; if it reads an animated state, recommend lambda-form
+- `Modifier\.offset\(` / `Modifier\.alpha\(` / `Modifier\.scale\(` / `Modifier\.rotate\(` / `Modifier\.padding\(` — look at the argument; if it reads an animated state, recommend lambda-form
 - `items\(\s*\w+\s*\)\s*\{` in a `Lazy*` without `key =` — probably missing keys
 - `animateItemPlacement\(` — migrate to `animateItem()`
 - `@NonSkippableComposable` / `@DontMemoize` — demand justification

@@ -217,8 +217,11 @@ Per-frame animated values belong in the layout or draw phase, not in recompositi
    - `Animatable(...)` is created in a composable body without `remember { ... }` or hoisting.
    - `animateTo(...)` / `snapTo(...)` is launched from the composition body rather than a `LaunchedEffect` or an event handler.
    - `rememberInfiniteTransition()` is hosted in a composable that stays composed offscreen (tab host, drawer content that is cheaper to keep mounted) — the animation keeps running until the host is removed from composition, with no visible benefit while offscreen.
+   - the same composable hosts multiple `animate*AsState` calls all driven by the same boolean/enum — check whether `updateTransition` would keep them synchronized.
 
 Positive signals to reward:
+
+- `updateTransition(targetState, label = "...")` with `transition.animateFloat` / `transition.animateColor` when several properties move together
 
 - `Modifier.graphicsLayer { alpha = alphaAnim.value; rotationZ = rot.value }` for alpha / rotation / scale animations
 - `Modifier.offset { IntOffset(offset.value.roundToInt(), 0) }` for position animations

@@ -77,6 +77,12 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - [problem 1]
 - [problem 2]
 
+**Animation performance signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, state exactly which animation rule affected Performance: composition-phase animated reads, `Animatable` not remembered, `rememberInfiniteTransition` kept alive offscreen, deprecated `animateItemPlacement()`, or missing lazy-list keys for `animateItem()`.
+- Keep animation-driving mistakes in Side Effects instead when the root cause is launching animation work from composition or using `rememberCoroutineScope().launch { animateTo(...) }` for target-driven state changes.
+
 **Evidence**
 
 - `path/to/file1.kt:LL` — [brief reason] · References: <https://developer.android.com/...>
@@ -108,6 +114,11 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 
 - [problem 1]
 - [problem 2]
+
+**Animation side-effect signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, name the Side Effects issue explicitly: `Animatable.animateTo()` from composition, `rememberCoroutineScope().launch { animateTo(...) }` reacting to state instead of `LaunchedEffect(target)`, or `Animatable` + `LaunchedEffect` where `animate*AsState` / `updateTransition` would suffice.
 
 **Evidence**
 
@@ -155,6 +166,7 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - Run `compose-agent focus on testing` if UI tests, screenshot tests, previews, or fake-image/platform-service patterns need deeper review.
 - Run `compose-agent focus on focus` if keyboard, D-pad, TV, desktop, ChromeOS, or focus-restoration behavior is present.
 - Run `compose-agent focus on kmp` if Compose Multiplatform, KMP source sets, `expect` / `actual`, or platform interop boundaries are present.
+- Run `compose-agent focus on animation` if animation findings need a file-scope rewrite rather than an audit-level diagnosis.
 ```
 
 ## Tone

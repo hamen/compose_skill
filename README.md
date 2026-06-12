@@ -1,6 +1,6 @@
 # Jetpack Compose Audit Skill
 
-**Version 3.1.0 · released 2026-06-08** — Android Launch UX release. The audit now flags Android 12+ static splash icons that can render blurry and recommends the `drawable-v31` animated-vector workaround. `compose-agent` ships as `2.1.0`.
+**Version 4.0.0 · released 2026-06-12** — Major animation release. Compose animation is now a first-class surface across the suite: `compose-agent` gains a dedicated `animation.md` reference targeting the mistakes LLMs make most, while `jetpack-compose-audit` surfaces animation performance and side-effect defects in the scored report. Both skills ship as `4.0.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -13,6 +13,19 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.0.0 — 2026-06-12
+
+**Major Compose animation release.**
+
+Animation is one of the largest API surfaces in Compose and the one LLMs misuse most predictably. This release makes animation a first-class skill surface — staying true to the suite's thesis of targeting *the mistakes models actually make*, not re-explaining the docs.
+
+- **New `references/animation.md`.** Covers API selection (`animate*AsState` vs `updateTransition` vs `Animatable`), synchronized multi-property motion with `updateTransition`, the `remember`ed-`Animatable` rule, target-driven launches via `LaunchedEffect`, gesture-driven `snapTo`/`animateDecay`, reduced motion, `spring` vs `tween` vs `keyframes`, deferred animated reads (layout/draw phase, `graphicsLayer`), `AnimatedContent` `contentKey` + `transitionSpec`, `AnimatedVisibility` + `animateEnterExit`, `Modifier.animateItem()` for lazy lists, and off-screen infinite transitions. Each section is framed as an **LLM tell** with a before/after fix and an official `developer.android.com` citation.
+- **New review step + core instruction.** The `compose-agent` review process now includes an explicit animation pass, and the core instructions carry a one-line "animate declaratively first" guardrail for authoring mode.
+- **Origin.** Mined from the [`android/skills`](https://github.com/android/skills) issue tracker — animation coverage was requested (issues #8, #11) and left to model knowledge plus docs upstream, leaving a practical gap this skill now fills. The cross-referenced relationship with `performance.md` (deferred reads) and `effects.md` (target-driven launches) is what differentiates it from a generic animation cheat-sheet.
+- **Audit reporting clarity.** `jetpack-compose-audit` has no separate Animation score category, but concrete animation defects still affect the existing Performance, Side Effects, or Composable API Quality scores when they violate those rubrics. The Performance report template now includes an explicit **Animation performance signals** block so these findings do not disappear under generic recomposition wording.
+- **Launch materials.** Release notes live in [`docs/release-notes-4.0.0.md`](./docs/release-notes-4.0.0.md); the launch tweet lives in [`docs/tweet-4.0.0.md`](./docs/tweet-4.0.0.md).
+- **Versions.** `compose-agent` → `4.0.0`. `jetpack-compose-audit` → `4.0.0`.
 
 ### 3.1.0 — 2026-06-08
 
@@ -297,7 +310,7 @@ This repo ships a second skill alongside the audit: [`compose-agent/`](./skills/
 
 - **Responds to:** "is this right?", "rewrite this the modern way", "check this file for deprecated API", "find state hoisting mistakes in this feature".
 - **Built for:** [android/skills#27](https://github.com/android/skills/issues/27) — the Android equivalent of [`swiftui-agent-skill`](https://github.com/twostraws/swiftui-agent-skill). The philosophy is the same: target the mistakes LLMs actually make in Compose, not repeat basics the model already knows.
-- **Shape:** short `SKILL.md` that routes to ten per-topic reference markdowns. You only pay the token cost for the areas your current task touches.
+- **Shape:** short `SKILL.md` that routes to focused per-topic reference markdowns. You only pay the token cost for the areas your current task touches.
 
 ### Install
 
@@ -333,7 +346,7 @@ Check ProfileScreen.kt with compose-agent.
 compose-agent: find deprecated API in this module.
 ```
 
-**Authoring mode** — the skill is loaded and you ask the assistant to *write* Compose. Before returning code, the assistant silently runs six checks against the rules in the skill:
+**Authoring mode** — the skill is loaded and you ask the assistant to *write* Compose. Before returning code, the assistant silently runs the core checks against the rules in the skill:
 
 1. Does the composable take `modifier: Modifier = Modifier`?
 2. Is state hoisted, or is there a clear reason to own it here?
@@ -341,12 +354,13 @@ compose-agent: find deprecated API in this module.
 4. If it launches work, is that work in a `LaunchedEffect`, `produceState`, or the ViewModel — not in the composition body?
 5. If it collects a `Flow`, is it `collectAsStateWithLifecycle()`?
 6. Is the parameter order data → `modifier` → other → content slot last?
+7. If it animates, is the API declarative first, remembered where needed, lifecycle-aware, and phase-correct?
 
 Any "no" without a reason → fixed before the code comes back. No extra prompt needed — loading the skill is enough.
 
 ### Scoped reviews (the token-saver)
 
-The thirteen reference files are deliberately loadable in isolation. Scoping a review to one area pulls only that reference into context instead of the full skill.
+The reference files are deliberately loadable in isolation. Scoping a review to one area pulls only that reference into context instead of the full skill.
 
 | You want… | Say |
 |---|---|
@@ -361,6 +375,7 @@ The thirteen reference files are deliberately loadable in isolation. Scoping a r
 | Compose UI tests, screenshot tests, semantics, previews | `compose-agent focus on testing` |
 | focus, keyboard, D-pad, TV/desktop navigation | `compose-agent focus on focus` |
 | KMP/CMP source sets, `expect`/`actual`, platform interop | `compose-agent focus on kmp` |
+| animation API choice, lifecycle, labels, phase-correct reads | `compose-agent focus on animation` |
 | deprecated / soft-deprecated APIs and Android launch resources | `compose-agent focus on api` |
 | idiomatic Kotlin / Android style | `compose-agent focus on kotlin` |
 
@@ -403,12 +418,23 @@ skills/compose-agent/
     testing.md                   UI tests, semantics assertions, screenshot tests, deterministic fakes, previews
     focus.md                     FocusRequester, keyboard / D-pad input, focus restoration, focus tests
     kmp.md                       KMP/CMP boundaries, expect/actual, interfaces, platform leaf composables
+    animation.md                 animation API choice, lifecycle, labels, deferred animated reads
     kotlin.md                    Kotlin conventions + Android Kotlin style the LLM misses
 ```
 
 ---
 
 ## Changelog
+
+### 4.0.0 — 2026-06-12
+
+**Added — first-class Compose animation coverage across the suite.**
+
+- **New `compose-agent/references/animation.md`.** Adds API selection (`animate*AsState` vs `updateTransition` vs `Animatable`), remembered animation state, target-driven launches, `spring` / `tween` / `keyframes` guidance, phase-correct animated reads, `AnimatedContent` keys, `AnimatedVisibility`, lazy-list `animateItem()`, and off-screen infinite-transition checks.
+- **Review and authoring wiring.** `compose-agent` now has an explicit animation review step, an authoring-mode animation guardrail, a scoped-review entry (`compose-agent focus on animation`), and manifest keywords for animation discovery.
+- **Audit reporting clarity.** `jetpack-compose-audit` does not add a fifth Animation category; concrete animation defects continue to affect the existing Performance, Side Effects, or Composable API Quality scores when they violate those rubrics. The report template now surfaces **Animation performance signals** directly inside Performance.
+- **Launch materials.** Added release notes and launch-copy drafts in [`docs/release-notes-4.0.0.md`](./docs/release-notes-4.0.0.md) and [`docs/tweet-4.0.0.md`](./docs/tweet-4.0.0.md).
+- **Versions.** `compose-agent` → `4.0.0`. `jetpack-compose-audit` → `4.0.0`.
 
 ### 3.1.0 — 2026-06-08
 
