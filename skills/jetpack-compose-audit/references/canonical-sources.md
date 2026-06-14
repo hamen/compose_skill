@@ -82,6 +82,8 @@ These ground:
 
 - Android Developers: `Side-effects in Compose`  
   `https://developer.android.com/develop/ui/compose/side-effects`
+- Android Developers: `Kotlin coroutines best practices`
+  `https://developer.android.com/kotlin/coroutines/coroutines-best-practices`
 
 This grounds:
 
@@ -92,6 +94,7 @@ This grounds:
 - `rememberUpdatedState`
 - `produceState`
 - lifecycle-aware effect behavior
+- cancellation propagation in suspending UI / ViewModel paths
 
 ### Composable API Quality
 

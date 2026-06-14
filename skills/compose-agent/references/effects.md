@@ -185,6 +185,7 @@ Rules:
 - `rememberCoroutineScope` gives you a scope tied to composition. Work launched here is cancelled when the composable leaves composition.
 - Do not use it to kick off state-driven animations — that belongs in `LaunchedEffect(target)`.
 - Never call `launch` directly in the composable body. It runs on every recomposition.
+- Keep durable business work out of leaf UI. A click handler can call a caller-owned suspending callback or ViewModel event, but it should not reach directly into repositories, persistence, or network clients from the composable.
 
 ## `rememberUpdatedState` — Capture The Latest Lambda
 
@@ -210,6 +211,22 @@ Rules:
 
 - Only use for values captured inside an effect whose keys do not include the value.
 - If the value is a key, you do not need `rememberUpdatedState` — the effect already restarts with the new value.
+- Do not eagerly read the delegated value inside `remember { ... }`; that captures the initial callback/value. Read the `rememberUpdatedState` value at invocation time, or key the `remember` block on the source value if rebuilding is intended.
+
+```kotlin
+// Wrong — captures the first onTimeout forever
+val latestOnTimeout by rememberUpdatedState(onTimeout)
+val timeoutRunnable = remember {
+    val captured = latestOnTimeout
+    Runnable { captured() }
+}
+
+// Right — defer the read until the Runnable runs
+val currentOnTimeout = rememberUpdatedState(onTimeout)
+val timeoutRunnable = remember {
+    Runnable { currentOnTimeout.value() }
+}
+```
 
 ## Animations Driven From Effects
 
@@ -237,6 +254,7 @@ For value-based animations (`animate*AsState`), no effect is needed at all — t
 
 - **Calling a suspend function directly in the composable body.** Does not compile, but LLMs sometimes wrap it in an IIFE or an `also { GlobalScope.launch { ... } }`. Both are wrong.
 - **`GlobalScope.launch`** anywhere in UI code. Use the composition's scope or the ViewModel's scope.
+- **Swallowing cancellation in suspending UI paths.** `runCatching`, `catch (Exception)`, and `catch (Throwable)` catch `CancellationException`; rethrow cancellation before converting failures into UI state.
 - **IO in a composable body** — file, network, database, serialization, subprocess. Never belongs in composition, even wrapped in `remember`. Full list and the Coil/Glide carve-out live in `performance.md` → "Expensive Work In Composition".
 - **State mutation in a `@Composable` function body outside `remember`/`mutableStateOf`.** The read–write cycle causes invalidation storms ("backwards writes").
 - **Using `LaunchedEffect` where `collectAsStateWithLifecycle` suffices.** If the goal is "show this flow as state", do not open the flow manually.

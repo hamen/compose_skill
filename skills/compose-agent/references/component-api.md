@@ -38,6 +38,8 @@ Rules:
 - **Modifier is the first optional parameter.** Callers that do `UserCard(user, onClick) { ... }` should not need named arguments to drop in a modifier.
 - **Exactly one `content` slot** named `content` — if the composable has a primary content area. For composables with multiple slots (`TopAppBar(title, actions, navigationIcon)`), each gets its own name.
 - **Slot lambdas last.** Callers use trailing-lambda syntax for the `content`.
+- **Event callbacks are not content slots.** Keep callbacks such as `onClick`, `onDismiss`, or `onValueChange` before `modifier` or among the optional named parameters so trailing-lambda call sites still mean UI content.
+- **Name callbacks as events**, not past-tense notifications: prefer `onClick`, `onSubmit`, `onValueChange`; avoid `onClicked`, `onSubmitted`, `onValueChanged` unless the project has a clear convention.
 - **Do not default `content`** to `null` — a `null` slot is a smell. If the slot is optional, make it `(@Composable () -> Unit)? = null` and branch; usually it is clearer to provide a default that renders nothing or a meaningful default.
 
 ## Slot APIs
@@ -70,6 +72,7 @@ Rules:
 - For a library-grade component, **two to five slots is normal**. A single `content` slot is fine for containers.
 - Name the slots after their role, not their appearance: `leading`, `trailing`, `supporting`, `headline`, `action` — not `left`, `right`, `top`.
 - Give slots a `Scope` receiver when the slot's composables need access to state from the parent (e.g. `RowScope`, `BoxScope`, or a custom `MyComponentScope`).
+- If the same slot is emitted from multiple branches or moved between containers, preserve its lifecycle deliberately. Prefer a layout shape that keeps the slot in one place; use `movableContentOf` only with a freshness strategy for changing lambdas, such as reading a `rememberUpdatedState(content)` value inside the movable block.
 
 ## Defaults
 
@@ -148,6 +151,10 @@ Rules:
 - A composable should be **deterministic** given its inputs plus captured `CompositionLocal`s. Calling it twice with the same inputs must produce the same UI tree.
 - **Do not** perform I/O, read the clock, or generate random values during composition. Wrap them in an effect and expose the result as state.
 - **Do not** mutate parameters. Parameters are read-only inputs.
+- A composable should either emit UI or return a value, not both. If a UI-emitting component needs to report something to the caller, expose callbacks or a state holder instead of returning a handle.
+- Reusable content composables should emit a cohesive root node. Multiple sibling emitters are acceptable only when the API is explicitly scoped to a parent layout (`RowScope`, `ColumnScope`, etc.) and the name/signature make that coupling clear.
+- Do not mark pure helpers as `@Composable` when they do not read composition data, snapshot state, or emit UI. Keep them as normal Kotlin functions.
+- Use `@ReadOnlyComposable` only for value-returning composables that read composition data and do not emit UI, call effects, or mutate composition.
 
 ## `CompositionLocal` Usage
 
@@ -259,6 +266,9 @@ fun UserCard(...) { ... }
 - `modifier: Modifier` without `= Modifier` — missing default.
 - `MutableState<T>` in a public composable parameter type — expose `State<T>` or a callback pair.
 - `fun rememberXxx` without calling `remember` internally.
+- `@Composable` functions with explicit non-`Unit` return types — verify they do not also emit UI.
+- `@ReadOnlyComposable` — verify the body is value-only and side-effect free.
+- `movableContentOf` — verify moved slots cannot capture stale lambdas.
 
 ## Primary Sources
 

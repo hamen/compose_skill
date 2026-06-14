@@ -6,14 +6,14 @@
 
 <p align="center">
   <a href="./bin/ci"><img alt="bin/ci passing" src="https://img.shields.io/badge/bin%2Fci-passing-2ea043"></a>
-  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.0.0"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
+  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.1.0"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/hamen/compose_skill?color=0a7f60"></a>
   <img alt="Skills" src="https://img.shields.io/badge/skills-2-7c3aed">
   <img alt="Compose animation ready" src="https://img.shields.io/badge/Compose-animation%20ready-f97316">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**Version 4.0.0 · released 2026-06-12** — Major animation release. Compose animation is now a first-class surface across the suite: `compose-agent` gains a dedicated `animation.md` reference targeting the mistakes LLMs make most, while `jetpack-compose-audit` surfaces animation performance and side-effect defects in the scored report. Both skills ship as `4.0.0`.
+**Version 4.1.0 · released 2026-06-14** — Eval-driven hygiene update: stronger composable API contracts, slot/callback checks, stale-callback detection, cancellation-safe suspend paths, and sharper search/scoring leads. Both skills ship as `4.1.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -26,6 +26,19 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.1.0 — 2026-06-14
+
+**Eval-driven — API hygiene and effect-correctness checks.**
+
+This release is driven by a focused eval set for the Compose mistakes agents keep missing in review mode: API shape, slot lifecycle, stale callbacks, cancellation, and boundary leaks. Those scenarios now map directly to Android guidance in both skills.
+
+- **`compose-agent` API hygiene.** `references/component-api.md` now catches callback-vs-slot shape, trailing-lambda misuse, slot lifecycle risks around `movableContentOf`, UI-emitting composables that also return handles, multiple sibling roots without an explicit parent scope, pure helpers marked `@Composable`, and misuse of `@ReadOnlyComposable`.
+- **`compose-agent` effect/coroutine hygiene.** `references/effects.md` and `references/concurrency.md` now flag eager `rememberUpdatedState` reads inside `remember { ... }`, durable business work launched from leaf UI, and broad `runCatching` / `catch (Throwable)` paths that swallow `CancellationException`.
+- **Audit wiring.** `jetpack-compose-audit` now searches and scores those same mobile-safe patterns, with canonical source coverage for Kotlin coroutine cancellation best practices.
+- **Eval artifact.** The 4.1.0 eval scenarios are documented in [`docs/evals-4.1.0.md`](./docs/evals-4.1.0.md): modifier contract, `MutableState` API shape, stale callbacks, emit-and-return composables, cancellation swallowing, CompositionLocal service leaks, and slot lifecycle.
+- **Launch materials.** Release notes live in [`docs/release-notes-4.1.0.md`](./docs/release-notes-4.1.0.md); the launch tweet lives in [`docs/tweet-4.1.0.md`](./docs/tweet-4.1.0.md).
+- **Versions.** `compose-agent` → `4.1.0`. `jetpack-compose-audit` → `4.1.0`.
 
 ### 4.0.0 — 2026-06-12
 
@@ -438,6 +451,18 @@ skills/compose-agent/
 ---
 
 ## Changelog
+
+### 4.1.0 — 2026-06-14
+
+**Eval-driven — API hygiene and effect-correctness checks.**
+
+- **Eval set.** Added [`docs/evals-4.1.0.md`](./docs/evals-4.1.0.md) with the scenarios that drove this release. These are the release's acceptance criteria, not just examples.
+- **Composable API contracts.** `compose-agent/references/component-api.md` now covers callback-vs-slot placement, event callback naming, slot lifecycle when content moves, UI-emitting composables that return values, multiple sibling roots without parent scopes, pure helpers marked `@Composable`, and `@ReadOnlyComposable` misuse.
+- **Effects and cancellation.** `compose-agent/references/effects.md` and `concurrency.md` now catch eager `rememberUpdatedState` reads inside `remember`, leaf UI launching durable business work, and broad failure handlers / `runCatching` that swallow `CancellationException`.
+- **Audit scoring/search.** `jetpack-compose-audit` now has search leads and scoring deductions for the same issues, plus a canonical source entry for Kotlin coroutine cancellation best practices.
+- **Scratch hygiene.** `tmp/` is ignored so local scratch files do not pollute `git status`.
+- **Launch materials.** Added release notes and launch-copy drafts in [`docs/release-notes-4.1.0.md`](./docs/release-notes-4.1.0.md) and [`docs/tweet-4.1.0.md`](./docs/tweet-4.1.0.md).
+- **Versions.** `compose-agent` → `4.1.0`. `jetpack-compose-audit` → `4.1.0`.
 
 ### 4.0.0 — 2026-06-12
 

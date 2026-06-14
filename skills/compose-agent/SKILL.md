@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'lifecycle', 'animation', 'testing', 'focus', 'kmp']"
 metadata:
   author: Ivan Morgillo
-  version: "4.0.0"
+  version: "4.1.0"
 ---
 
 # Compose Agent

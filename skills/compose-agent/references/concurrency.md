@@ -65,8 +65,13 @@ class ProfileViewModel(private val repo: ProfileRepository) : ViewModel() {
 
     fun load(userId: String) = viewModelScope.launch {
         _state.value = ProfileState.Loading
-        _state.value = runCatching { repo.load(userId) }
-            .fold(::ProfileState.Loaded, ::ProfileState.Error)
+        _state.value = try {
+            ProfileState.Loaded(repo.load(userId))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            ProfileState.Error(t)
+        }
     }
 }
 ```
@@ -134,6 +139,7 @@ For deeper Flow operator selection (cold vs hot, `flatMap` variants, `combine`/`
 - Coroutine cancellation is cooperative. Long loops should check `isActive` or use `yield()`. Blocking JVM calls do not respect cancellation — wrap them in `withContext(Dispatchers.IO) { runInterruptible { ... } }` if you need cancel-by-interrupt.
 - `viewModelScope.launch { ... }` blocks cancel automatically when the ViewModel is cleared. Do not also wrap them in `try/finally` cleanup unless you have state to release.
 - `LaunchedEffect` blocks cancel automatically when the composable leaves composition or when keys change. You do not need `try/finally { cancel() }`.
+- Always let `CancellationException` propagate. Broad `catch (Exception)`, `catch (Throwable)`, and `runCatching { ... }` catch cancellation too; rethrow cancellation before turning failures into UI state.
 
 ## Common LLM Mistakes
 
@@ -144,6 +150,7 @@ For deeper Flow operator selection (cold vs hot, `flatMap` variants, `combine`/`
 - **Leaking `ViewModel` from a child composable into a `by viewModels()` call.** ViewModel instantiation belongs on the route composable only (see `references/state.md`).
 - **Choosing `_state.emit(...)` vs `_state.value = ...` for the wrong reason.** `MutableStateFlow.value` is thread-safe; it is not "main-thread-confined". Prefer `.value = ...` for straightforward synchronous state updates, `emit(...)` when you are implementing a suspending `FlowCollector` API, and `update { ... }` when the next value depends on the current one.
 - **`launchIn` on the UI scope.** Works, but harder to read than `collect { ... }` inside a `LaunchedEffect`. Prefer the explicit form.
+- **`runCatching` around suspend calls without a cancellation guard.** Use explicit `try/catch` with `CancellationException` rethrow, or a helper that rethrows cancellation before folding failures.
 
 ## Primary Sources
 

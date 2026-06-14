@@ -330,6 +330,9 @@ Positive signals to reward:
 - `\.launch\s*[\({]` — catches both `scope.launch {` and `scope.launch(Dispatchers.IO) {`
 - `Thread\(`
 - `GlobalScope`
+- `runCatching\s*\{`
+- `catch\s*\(\s*\w+\s*:\s*(Throwable|Exception)\s*\)`
+- `CancellationException`
 - `LifecycleEventObserver`
 - `BackHandler`
 - `NavHost`, `composable\(` (in nav graphs), `navController\.navigate`
@@ -354,6 +357,9 @@ Positive signals to reward:
 - listener/observer registration without `onDispose`
 - effect keys too broad or too narrow
 - `rememberCoroutineScope()` used to launch keyed/long-lived work that belongs in a `LaunchedEffect`
+- `rememberUpdatedState` read eagerly inside `remember { ... }` (for example, assigning `val captured = latestCallback` inside the remembered block) — this captures the initial callback instead of reading the latest value at invocation time
+- `runCatching { ... }`, `catch (Exception)`, or `catch (Throwable)` around suspend calls in UI-reached code without rethrowing `CancellationException` — cancellation becomes an error state and structured concurrency breaks
+- event handlers in leaf composables directly calling repositories, persistence, network clients, or other durable business services — route through a ViewModel / state holder callback unless the caller explicitly owns the suspending boundary
 - `snapshotFlow { ... }` invoked outside an effect, or used to compute a value that `derivedStateOf` would handle more cheaply
 - `derivedStateOf { a + b }`-style misuse — when input frequency ≈ output frequency it is pure overhead (the official antipattern)
 - an `Animatable` animation launched from the composition body (not inside `LaunchedEffect` or an event handler) — it will restart with recomposition and bypass effect lifecycle semantics
@@ -386,6 +392,8 @@ Focus on shared components and internal UI kit code, not every screen.
 - ViewModels in CompositionLocal: `compositionLocalOf<.*ViewModel`, `staticCompositionLocalOf<.*ViewModel`
 - `viewModel\(` — invocation sites; flag when called below the screen entry composable
 - slot APIs and receiver scopes: `RowScope\.`, `ColumnScope\.`, `BoxScope\.`, `content:\s*@Composable`
+- non-Unit composable signatures: `@Composable[\s\S]{0,160}fun\s+\w+\s*\([^)]*\)\s*:\s*[^={\n]+`
+- composition marker annotations: `@ReadOnlyComposable`, `@NonRestartableComposable`
 - modifier authoring: `Modifier\.composed\s*\{` (discouraged), `Modifier\.Node`, `ModifierNodeElement`
 - movable content: `movableContentOf`, `movableContentWithReceiverOf`
 - variant smells: `\bstyle:\s*\w+Style\b` — single-component-with-style-enum
@@ -407,6 +415,12 @@ Focus on shared components and internal UI kit code, not every screen.
 - custom modifiers built with `Modifier.composed { ... }` (discouraged in favor of `Modifier.Node`)
 - `MutableState<T>` params — replace with `value: T` (immediate read) or `value: () -> T` (deferred) plus `onValueChange: (T) -> Unit`
 - `@Composable` UI-emitting functions named in lowerCamelCase or returning a non-Unit value (style guide violation)
+- UI-emitting composables that also return a value or handle — expose callbacks / state holders instead
+- reusable content composables that emit multiple sibling roots without an explicit parent-layout scope such as `RowScope` / `ColumnScope`
+- pure helper functions marked `@Composable` even though they do not read composition data, snapshot state, or emit UI
+- `@ReadOnlyComposable` on any function that emits UI, launches effects, or mutates state
+- event callbacks placed as the trailing lambda where the call site looks like a content slot; keep trailing lambdas for `@Composable` content
+- `movableContentOf` used for changing caller content without a freshness strategy such as `rememberUpdatedState(content)` read inside the movable block
 
 ### Positive Signals
 
