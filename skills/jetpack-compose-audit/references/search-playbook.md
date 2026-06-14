@@ -392,7 +392,7 @@ Focus on shared components and internal UI kit code, not every screen.
 - ViewModels in CompositionLocal: `compositionLocalOf<.*ViewModel`, `staticCompositionLocalOf<.*ViewModel`
 - `viewModel\(` — invocation sites; flag when called below the screen entry composable
 - slot APIs and receiver scopes: `RowScope\.`, `ColumnScope\.`, `BoxScope\.`, `content:\s*@Composable`
-- non-Unit composable signatures: `@Composable[\s\S]{0,160}fun\s+\w+\s*\([^)]*\)\s*:\s*[^={\n]+`
+- non-Unit composable signatures: `@Composable[\s\S]{0,400}?fun\s+\w+\s*\([\s\S]*?\)\s*:\s*@?\w` — note `[^)]*` would stop at the first `)`, missing every composable whose params contain a lambda type (`onClick: () -> Unit`); the non-greedy `[\s\S]*?` spans the whole param list. Verify hits by eye, since this can also span past the intended signature.
 - composition marker annotations: `@ReadOnlyComposable`, `@NonRestartableComposable`
 - modifier authoring: `Modifier\.composed\s*\{` (discouraged), `Modifier\.Node`, `ModifierNodeElement`
 - movable content: `movableContentOf`, `movableContentWithReceiverOf`

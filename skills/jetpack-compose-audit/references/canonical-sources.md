@@ -80,9 +80,9 @@ These ground:
 
 ### Side Effects
 
-- Android Developers: `Side-effects in Compose`  
+- Android Developers: `Side-effects in Compose`\
   `https://developer.android.com/develop/ui/compose/side-effects`
-- Android Developers: `Kotlin coroutines best practices`
+- Android Developers: `Kotlin coroutines best practices`\
   `https://developer.android.com/kotlin/coroutines/coroutines-best-practices`
 
 This grounds:

@@ -6,14 +6,14 @@
 
 <p align="center">
   <a href="./bin/ci"><img alt="bin/ci passing" src="https://img.shields.io/badge/bin%2Fci-passing-2ea043"></a>
-  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.1.0"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
+  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.1.1"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/hamen/compose_skill?color=0a7f60"></a>
   <img alt="Skills" src="https://img.shields.io/badge/skills-2-7c3aed">
   <img alt="Compose animation ready" src="https://img.shields.io/badge/Compose-animation%20ready-f97316">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**Version 4.1.0 · released 2026-06-14** — Eval-driven hygiene update: stronger composable API contracts, slot/callback checks, stale-callback detection, cancellation-safe suspend paths, and sharper search/scoring leads. Both skills ship as `4.1.0`.
+**Version 4.1.1 · released 2026-06-14** — Patch on the eval-driven 4.1.0: fixes the non-`Unit` composable search regex (it previously stopped at the first `)`, missing any composable with a lambda parameter) and a markdown line-break nit in the canonical sources. Both skills ship as `4.1.1`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -27,6 +27,14 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 
 ## What's new
 
+### 4.1.1 — 2026-06-14
+
+**Patch — search-lead and docs fixes on top of 4.1.0.**
+
+- **Fixed the non-`Unit` composable search regex.** The 4.1.0 lead used `\([^)]*\)`, which stops at the first `)` and therefore missed every composable whose parameter list contains a lambda type (`onClick: () -> Unit`) — i.e. most real ones. It now spans the full parameter list and is documented as eyeball-verify.
+- **Markdown fix.** The Kotlin coroutines canonical-source entry now renders its URL on its own line (missing hard line break).
+- **Versions.** `compose-agent` → `4.1.1`. `jetpack-compose-audit` → `4.1.1`.
+
 ### 4.1.0 — 2026-06-14
 
 **Eval-driven — API hygiene and effect-correctness checks.**
@@ -36,7 +44,7 @@ This release is driven by a focused eval set for the Compose mistakes agents kee
 - **`compose-agent` API hygiene.** `references/component-api.md` now catches callback-vs-slot shape, trailing-lambda misuse, slot lifecycle risks around `movableContentOf`, UI-emitting composables that also return handles, multiple sibling roots without an explicit parent scope, pure helpers marked `@Composable`, and misuse of `@ReadOnlyComposable`.
 - **`compose-agent` effect/coroutine hygiene.** `references/effects.md` and `references/concurrency.md` now flag eager `rememberUpdatedState` reads inside `remember { ... }`, durable business work launched from leaf UI, and broad `runCatching` / `catch (Throwable)` paths that swallow `CancellationException`.
 - **Audit wiring.** `jetpack-compose-audit` now searches and scores those same mobile-safe patterns, with canonical source coverage for Kotlin coroutine cancellation best practices.
-- **Eval artifact.** The 4.1.0 eval scenarios are documented in [`docs/evals-4.1.0.md`](./docs/evals-4.1.0.md): modifier contract, `MutableState` API shape, stale callbacks, emit-and-return composables, cancellation swallowing, CompositionLocal service leaks, and slot lifecycle.
+- **Eval artifact.** The full set of ten 4.1.0 eval scenarios is documented in [`docs/evals-4.1.0.md`](./docs/evals-4.1.0.md); representative cases include the modifier contract, `MutableState` API shape, stale callbacks, emit-and-return composables, cancellation swallowing, CompositionLocal service leaks, and slot lifecycle.
 - **Launch materials.** Release notes live in [`docs/release-notes-4.1.0.md`](./docs/release-notes-4.1.0.md); the launch tweet lives in [`docs/tweet-4.1.0.md`](./docs/tweet-4.1.0.md).
 - **Versions.** `compose-agent` → `4.1.0`. `jetpack-compose-audit` → `4.1.0`.
 
@@ -451,6 +459,14 @@ skills/compose-agent/
 ---
 
 ## Changelog
+
+### 4.1.1 — 2026-06-14
+
+**Patch — search-lead and docs fixes.**
+
+- **Fixed.** The non-`Unit` composable search lead in `jetpack-compose-audit/references/search-playbook.md` no longer stops at the first `)`, so composables with lambda parameters are matched. Documented as eyeball-verify since the broadened span can over-match.
+- **Fixed.** Hard line break restored on the Kotlin coroutines best-practices entry in `references/canonical-sources.md` so the URL renders on its own line.
+- **Versions.** `compose-agent` → `4.1.1`. `jetpack-compose-audit` → `4.1.1`.
 
 ### 4.1.0 — 2026-06-14
 
