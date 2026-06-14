@@ -4,7 +4,7 @@ Released: 2026-06-14
 
 Compose Skill Suite 4.1.0 is an eval-driven hygiene release. The point is not a new broad category; it is turning concrete review failures into durable skill behavior across both `compose-agent` and `jetpack-compose-audit`.
 
-The release is anchored by [`docs/evals-4.1.0.md`](./evals-4.1.0.md). Those scenarios are the acceptance criteria for the new guidance: if a future edit regresses callback shape, slot lifecycle, stale callback handling, cancellation propagation, or composable API contracts, the release has failed.
+The release is anchored by the eval set in [`skills/jetpack-compose-audit/evals/evals.json`](../skills/jetpack-compose-audit/evals/evals.json) (these scenarios shipped as prose in `docs/evals-4.1.0.md` for 4.1.0 and were converted to the machine-readable eval format in 4.1.2). Those scenarios are the acceptance criteria for the new guidance: if a future edit regresses callback shape, slot lifecycle, stale callback handling, cancellation propagation, or composable API contracts, the release has failed.
 
 ## What Changed
 
