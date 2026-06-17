@@ -69,8 +69,10 @@ private fun FeedList(lazyPagingItems: LazyPagingItems<Post>) {
                 else -> PostRow(post)
             }
         }
-        if (lazyPagingItems.loadState.append is LoadState.Loading) {
-            item { AppendSpinner() }
+        when (lazyPagingItems.loadState.append) {
+            is LoadState.Loading -> item { AppendSpinner() }
+            is LoadState.Error -> item { AppendRetryRow(onRetry = { lazyPagingItems.retry() }) }
+            else -> Unit
         }
     }
 }
@@ -79,6 +81,8 @@ private fun FeedList(lazyPagingItems: LazyPagingItems<Post>) {
 ViewModel guardrail: expose `Flow<PagingData<Post>>` built once and **`cachedIn(viewModelScope)`**. Do not rebuild `Pager` / `PagingData` on UI recomposition.
 
 **LLM tell:** `viewModel.feed.collectAsState()` then manually iterating — there is no supported `PagingData` → `List` shortcut for infinite feeds.
+
+**LLM tell:** `viewModel.feed.collectAsStateWithLifecycle()` on a `Flow<PagingData<T>>`. The lifecycle rule that holds for every other screen does **not** transfer here — `collectAsLazyPagingItems()` is the only supported collector, and it is already lifecycle-aware. Treat "this Flow needs `collectAsStateWithLifecycle`" as not applying to `PagingData`.
 
 <https://developer.android.com/topic/libraries/architecture/paging/v3-compose#collect-lazyPagingItems>
 
@@ -144,7 +148,9 @@ val filtered = remember(query) {
 
 Filtering, sorting, and search belong in the **ViewModel / PagingSource / `flatMapLatest` on the `Flow<PagingData<T>>`**, not in the composable. Materializing defeats the lazy window and reintroduces memory churn.
 
-**Do not skip placeholders.** When `lazyPagingItems[index]` is `null`, render a placeholder — do not assume every slot is non-null.
+**Do not skip placeholders.** When `lazyPagingItems[index]` is `null`, render a placeholder — do not assume every slot is non-null. Never `!!` the slot: it NPE-crashes the first time a page is still loading.
+
+Whether `null` slots occur at all is set by **`PagingConfig.enablePlaceholders`** (a repository/`Pager` decision, not a UI one). Placeholders **on** → `get(index)` can return `null` and you **must** handle it. Placeholders **off** → slots are never `null`, but the list jumps as pages arrive. Match the UI branch to the config: don't write a placeholder branch that can never run, and don't assume non-null when placeholders are enabled.
 
 ## Preview
 
