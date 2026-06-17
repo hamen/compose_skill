@@ -31,7 +31,7 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 
 **Paging 3 in Compose — guardrails for paged lazy lists.**
 
-- **New reference.** [`skills/compose-agent/references/paging.md`](./skills/compose-agent/references/paging.md) — stable keys on `LazyPagingItems`, `LoadState` branches, user-driven refresh/retry. Targets LLM mistakes, not `PagingSource` implementation.
+- **New reference.** [`skills/compose-agent/references/paging.md`](./skills/compose-agent/references/paging.md) — decision table, golden path, stable keys, `LoadState`, hard nos. Targets LLM mistakes, not `PagingSource` implementation.
 - **Review wiring.** New step #14 in `compose-agent`; scoped entry `compose-agent focus on paging`.
 - **Audit hooks.** Report signals **Paging list correctness** (Performance) and **Paging load-state handling** (State) — no fifth score category.
 - **Plan.** [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md) includes the multi-agent validation checklist.

@@ -1,6 +1,7 @@
 # Paging reference — implementation plan
 
-Status: **in progress (4.2.0 branch)**  
+Status: **implemented on branch `feat/paging-reference-4.2.0` — Composer 2.5 refinement pass applied.**
+
 Last updated: 2026-06-17.
 
 This document is the plan for extending Compose Skill Suite with Paging 3 in Compose coverage. It follows the same product thesis as `animation.md` and `navigation.md`: **guardrails for LLM mistakes**, not an API encyclopedia.
@@ -82,6 +83,18 @@ Revisit only if user demand or audit false-negative rate justifies it.
 | Spinner never dismissed (refresh stuck) | State management | **Paging load-state handling** |
 | `refresh()` / `retry()` from composition | Side effects | (existing side-effect language) |
 | Exposing raw `LazyPagingItems` from design-system API | Composable API quality | (existing API-shape language) |
+
+## Composer 2.5 refinement (post-initial PR)
+
+Applied to `paging.md` before multi-LLM convergence testing:
+
+- Decision table moved to top (routing-first, like `animation.md`)
+- Single **golden path** (`FeedScreen` + `FeedList`) replacing fragmented sections
+- **Hard nos** section: `itemSnapshotList`, filter-in-composition
+- **`@Preview`** pattern with `PagingData.from(...)`
+- Note that direct `items(lazyPagingItems)` is **deprecated** — use `itemKey` + standard `items(count, key, …)`
+- Compacted: pull-to-refresh merged into LoadState; API-shape section folded into checklist
+- Cross-refs moved to footer
 
 ## Validation plan (post-merge)
 

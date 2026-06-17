@@ -1,152 +1,184 @@
 # Paging
 
-Paging 3 in Compose is not "a lazy list that loads more." It is a **windowed, append-only stream** with its own load states, refresh semantics, and key stability rules. LLMs treat `LazyPagingItems` like `List<Item>` and reproduce the same three production bugs: **missing keys**, **ignored `LoadState`**, and **refresh wired from composition**.
+Paging 3 in Compose is not "a lazy list that loads more." It is a **windowed, append-only stream** with load states, refresh semantics, and key rules of its own. LLMs treat `LazyPagingItems` like `List<Item>` and reproduce the same three production bugs:
 
-Paging defects are usually lazy-list defects wearing a paginator costume. Cross-reference `performance.md` (keys, scroll cost), `state.md` (single source of truth for load UI), `concurrency.md` (lifecycle collection), and `effects.md` (when refresh belongs in an effect vs a click handler).
+1. **Missing or index-only keys** on a paginated stream
+2. **Ignored `LoadState`** — blank screens, stuck spinners, silent errors
+3. **`refresh()` wired from composition** instead of user actions
 
 For a numeric audit of an existing codebase, use the sibling `jetpack-compose-audit` skill — paging smells score under Performance and State, not a separate category.
 
-## When Paging vs a Normal List
+## Decision Table
 
-| Situation | Use |
-|-----------|-----|
-| Bounded, in-memory collection (settings rows, tabs, static menu) | `LazyColumn` + `items(list)` |
-| Network/DB-backed stream that grows as the user scrolls | `Pager` → `PagingData` → `collectAsLazyPagingItems()` |
-| User expects pull-to-refresh over a paged feed | Paging + explicit refresh UI driven by `LoadState` |
-| Small list loaded once from the ViewModel (`StateFlow<List<T>>`) | Plain list — do not add Paging ceremony |
+| You are doing… | Use |
+|---|---|
+| Feed that grows as the user scrolls (network / DB window) | `Flow<PagingData<T>>` + `collectAsLazyPagingItems()` |
+| List already complete in `StateFlow<List<T>>` | `LazyColumn` + `items(list)` — **do not add Paging** |
+| First paint while refresh runs | branch on `loadState.refresh is LoadState.Loading && itemCount == 0` |
+| Error on first load | `loadState.refresh is LoadState.Error` + `retry()` |
+| Empty feed after successful load | `loadState.refresh is LoadState.NotLoading && itemCount == 0` |
+| Footer "loading more" | `loadState.append is LoadState.Loading` |
+| Footer error | `loadState.append is LoadState.Error` + retry affordance |
+| User pull-to-refresh / explicit reload | `refresh()` on gesture — **not** in composition |
+| Stable lazy identity | `items(count = …, key = lazyPagingItems.itemKey { it.id })` |
+| `@Preview` of a paged screen | `flowOf(PagingData.from(samples)).collectAsLazyPagingItems()` |
 
 **LLM tell:** introducing `Pager`, `PagingSource`, and `LazyPagingItems` for a screen that already holds a complete `List` in a `StateFlow`. Paging earns its complexity only when the dataset is **too large or too slow** to hold entirely in memory.
 
 <https://developer.android.com/topic/libraries/architecture/paging/v3-compose>
 
-## Collect Once, Lifecycle-Aware
+## Golden Path
 
-`LazyPagingItems` comes from collecting a `Flow<PagingData<T>>`. In UI:
+One screen-level recipe. Copy this shape; swap names.
 
 ```kotlin
 @Composable
 fun FeedScreen(viewModel: FeedViewModel) {
     val lazyPagingItems = viewModel.feed.collectAsLazyPagingItems()
-    FeedList(lazyPagingItems)
+
+    when {
+        lazyPagingItems.loadState.refresh is LoadState.Loading && lazyPagingItems.itemCount == 0 -> {
+            LoadingContent()
+        }
+        lazyPagingItems.loadState.refresh is LoadState.Error -> {
+            ErrorContent(onRetry = { lazyPagingItems.retry() })
+        }
+        lazyPagingItems.loadState.refresh is LoadState.NotLoading && lazyPagingItems.itemCount == 0 -> {
+            EmptyContent()
+        }
+        else -> {
+            PullToRefreshBox(
+                isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
+                onRefresh = { lazyPagingItems.refresh() },
+            ) {
+                FeedList(lazyPagingItems)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeedList(lazyPagingItems: LazyPagingItems<Post>) {
+    LazyColumn {
+        items(
+            count = lazyPagingItems.itemCount,
+            key = lazyPagingItems.itemKey { it.id },
+        ) { index ->
+            when (val post = lazyPagingItems[index]) {
+                null -> PostPlaceholder()
+                else -> PostRow(post)
+            }
+        }
+        if (lazyPagingItems.loadState.append is LoadState.Loading) {
+            item { AppendSpinner() }
+        }
+    }
 }
 ```
 
-Guardrails:
-
-- **`PagingData` is collected in the ViewModel** with `cachedIn(viewModelScope)` (or equivalent scope). Do not rebuild `Pager`/`PagingData` on every UI recomposition.
-- Prefer **`collectAsLazyPagingItems()`** in the composable that renders the list. It is the supported Compose integration API.
-- If the surrounding screen already uses lifecycle-aware Flow collection elsewhere, stay consistent — do not mix `collectAsState()` for paging with `collectAsStateWithLifecycle()` for other streams on the same screen without a reason.
+ViewModel guardrail: expose `Flow<PagingData<Post>>` built once and **`cachedIn(viewModelScope)`**. Do not rebuild `Pager` / `PagingData` on UI recomposition.
 
 **LLM tell:** `viewModel.feed.collectAsState()` then manually iterating — there is no supported `PagingData` → `List` shortcut for infinite feeds.
 
 <https://developer.android.com/topic/libraries/architecture/paging/v3-compose#collect-lazyPagingItems>
 
-## Render With `itemCount` and Stable Keys
+## Keys — Stable Domain Identity, Not Index
 
-The supported lazy integration uses **`items(count = lazyPagingItems.itemCount, key = …)`** (or the equivalent `items` overload that accepts `LazyPagingItems`). Keys must come from **stable domain identity**, not list index.
+The supported integration is **`items(count = lazyPagingItems.itemCount, key = lazyPagingItems.itemKey { … })`**. The older `items(lazyPagingItems)` overload on `LazyListScope` is **deprecated** — use `itemKey` with the standard lazy `items(count, key, …)` API instead (works for `LazyColumn`, `LazyVerticalGrid`, `HorizontalPager`, etc.).
 
 ```kotlin
-// LLM-generated — index keys break on prepend/refresh/reorder
-LazyColumn {
-    items(count = lazyPagingItems.itemCount, key = { index -> index }) { index ->
-        val item = lazyPagingItems[index]
-        if (item != null) FeedRow(item)
-    }
-}
+// LLM-generated — index keys break on prepend / refresh / reorder
+items(count = lazyPagingItems.itemCount, key = { index -> index }) { index -> … }
 
-// Correct — stable id; null slot = placeholder while page loads
-LazyColumn {
-    items(
-        count = lazyPagingItems.itemCount,
-        key = lazyPagingItems.itemKey { it.id },
-    ) { index ->
-        lazyPagingItems[index]?.let { FeedRow(it) }
-    }
+// Correct — stable id; null slot = placeholder while a page loads
+items(
+    count = lazyPagingItems.itemCount,
+    key = lazyPagingItems.itemKey { it.id },
+) { index ->
+    lazyPagingItems[index]?.let { PostRow(it) } ?: PostPlaceholder()
 }
 ```
 
 Rules:
 
-- Use **`itemKey { it.<stableId> }`** when the item type is non-null in the lambda.
+- Keys come from **stable domain ids**, never bare index on paginated feeds.
 - Never use **`hashCode()`** on a non-`data class` or on objects that can collide across pages.
-- If the backend can return **duplicate IDs** (merged feeds, reconnect storms), dedupe in the repository layer or synthesize keys (`"${source}-${id}"`) — Compose will crash with `Key ... was already used` otherwise.
-- Do not call **`indexOf` / `indexOfFirst`** inside the item factory to recover identity — same O(n²) and crash profile as non-paging lazy lists. See `performance.md`.
+- Duplicate backend IDs (merged feeds, reconnect storms) → dedupe in the repository or synthesize keys (`"${source}-${id}"`). Compose crashes with `Key ... was already used` otherwise.
+- No **`indexOf` / `indexOfFirst`** inside the item factory — same O(n²) and crash profile as non-paging lazy lists. See `performance.md`.
 
-**LLM tell:** `lazyPagingItems.itemSnapshotList.items.forEach { … }` or building a `List` from the snapshot and passing it to a child `LazyColumn`. Stay in the **`items(count = …)`** integration; the snapshot is for debugging/tests, not primary UI wiring.
+<https://developer.android.com/reference/kotlin/androidx/paging/compose/LazyPagingItems#itemKey(kotlin.Function1)>
 
-<https://developer.android.com/topic/libraries/architecture/paging/v3-compose#display-lazylist>
+## LoadState and Refresh
 
-## LoadState — Loading, Empty, Error, Append
-
-`LazyPagingItems` exposes **`loadState`** (refresh / prepend / append). UI must branch on it — do not assume `itemCount > 0` means success.
+`LazyPagingItems.loadState` has **refresh**, **prepend**, and **append**. UI must branch — do not assume `itemCount > 0` means success.
 
 | Signal | Typical UI |
 |--------|------------|
-| `loadState.refresh is LoadState.Loading` && `itemCount == 0` | Full-screen loading |
-| `loadState.refresh is LoadState.Error` | Error + retry (`lazyPagingItems.retry()`) |
-| `loadState.append is LoadState.Loading` | Footer spinner / item placeholder |
-| `loadState.append is LoadState.Error` | Snackbar or inline "tap to retry" on footer |
-| `loadState.refresh is LoadState.NotLoading` && `itemCount == 0` | Empty state |
-
-```kotlin
-when {
-    lazyPagingItems.loadState.refresh is LoadState.Loading && lazyPagingItems.itemCount == 0 -> {
-        LoadingContent()
-    }
-    lazyPagingItems.loadState.refresh is LoadState.Error -> {
-        ErrorContent(onRetry = { lazyPagingItems.retry() })
-    }
-    else -> {
-        FeedList(lazyPagingItems)
-    }
-}
-```
+| `refresh is Loading` && `itemCount == 0` | Full-screen loading |
+| `refresh is Error` | Error + `retry()` |
+| `refresh is NotLoading` && `itemCount == 0` | Empty state |
+| `append is Loading` | Footer spinner / row placeholder |
+| `append is Error` | Snackbar or inline retry on footer |
 
 **LLM tell:** rendering `LazyColumn` with zero items and no loading/error branch — users see a blank screen while refresh runs or after a failed fetch.
 
-**LLM tell:** calling **`refresh()`** unconditionally in a `LaunchedEffect(Unit)` or in the composable body to "load data on enter." Initial load is **`PagingData`'s job**; `refresh()` is for **user-initiated** pull-to-refresh or explicit reload actions. One-shot navigation args belong in the ViewModel/`Pager` factory, not a composition-time refresh loop.
+**LLM tell:** calling **`refresh()`** unconditionally in `LaunchedEffect(Unit)` or in the composable body to "load data on enter." Initial load is **`PagingData`'s job**; `refresh()` is for **user-initiated** reload. One-shot navigation args belong in the ViewModel / `Pager` factory, not a composition-time refresh loop.
+
+**LLM tell:** a parallel `mutableStateOf(isLoading)` shadowing `loadState` — two sources of truth for the same UX. Prefer `loadState` unless the design genuinely decouples them.
+
+Use **`retry()`** after `LoadState.Error`. Wire **`refresh()`** to pull-to-refresh or explicit reload actions only.
 
 <https://developer.android.com/reference/kotlin/androidx/paging/compose/LazyPagingItems>
 
-## Pull-to-Refresh and Retry
+## Hard Nos
 
-Wire refresh to **user events** or explicit reload actions:
+**Do not materialize the window in composition.**
 
 ```kotlin
-PullToRefreshBox(
-    isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
-    onRefresh = { lazyPagingItems.refresh() },
-) {
+// LLM tell — snapshot is for debug/tests, not primary UI
+lazyPagingItems.itemSnapshotList.items.forEach { … }
+val filtered = remember(query) {
+    lazyPagingItems.itemSnapshotList.filter { it.title.contains(query) }
+}
+```
+
+Filtering, sorting, and search belong in the **ViewModel / PagingSource / `flatMapLatest` on the `Flow<PagingData<T>>`**, not in the composable. Materializing defeats the lazy window and reintroduces memory churn.
+
+**Do not skip placeholders.** When `lazyPagingItems[index]` is `null`, render a placeholder — do not assume every slot is non-null.
+
+## Preview
+
+```kotlin
+@Preview
+@Composable
+private fun FeedListPreview() {
+    val lazyPagingItems = flowOf(PagingData.from(samplePosts)).collectAsLazyPagingItems()
     FeedList(lazyPagingItems)
 }
 ```
 
-Use **`retry()`** for error recovery after `LoadState.Error`. Do not spin a separate `mutableStateOf(isLoading)` that duplicates `loadState` unless the design needs decoupled UX — two sources of truth for loading is an LLM favorite and a bug farm.
-
-## API Shape for Reusable Components
-
-Shared list components should take **`LazyPagingItems<T>`** (or a narrow interface) plus callbacks — not a materialized `List<T>` that defeats paging.
-
-For design-system wrappers:
-
-- Accept `modifier: Modifier = Modifier` on the outermost scroll container.
-- Do not expose **`MutableState`** for load state when `loadState` already exists on `LazyPagingItems`.
-- Keep **`refresh` / `retry`** as callback parameters if the parent owns the `LazyPagingItems` instance.
-
-See `component-api.md` for parameter order and slot conventions.
+**LLM tell:** faking a paged screen with `List<Post>` passed to a non-paging `LazyColumn` — previews drift from production wiring. Use `PagingData.from(...)` for Compose previews.
 
 ## Anti-Pattern Checklist
 
 Before returning paging UI code, verify:
 
-- [ ] Paging is justified (unbounded / paged data source), not a `StateFlow<List>` in disguise
-- [ ] `PagingData` is **`cachedIn`** appropriate scope in the ViewModel
-- [ ] List uses **`items(count = lazyPagingItems.itemCount, key = …)`** with **stable ids**
-- [ ] No **index-only** or **`hashCode()`** keys on merge-prone feeds
-- [ ] **`LoadState`** drives initial loading, empty, error, and append footer — not a parallel manual flag
-- [ ] **`refresh()` / `retry()`** are user-driven or explicitly documented — not fired from composition on every recomposition
+- [ ] Paging is justified — not a `StateFlow<List>` in disguise
+- [ ] `PagingData` is **`cachedIn`** in the ViewModel
+- [ ] **`items(count, key = itemKey { stableId })`** — no index-only keys on paginated feeds
+- [ ] **`LoadState`** drives loading / empty / error / append — no duplicate manual loading flag
+- [ ] **`refresh()` / `retry()`** are user-driven — not fired from composition each recomposition
+- [ ] No **`itemSnapshotList`** primary UI path; no filter/sort in the composable
 - [ ] No **`indexOf`** identity recovery inside item factories
-- [ ] Placeholder slots (`lazyPagingItems[i] == null`) handled without crashing
+- [ ] **`null` slots** render placeholders
+- [ ] Reusable list APIs take **`LazyPagingItems<T>`** (or callbacks from the owner) — not a materialized `List<T>`; see `component-api.md` for `modifier` and parameter order
+
+## Cross-References
+
+- `performance.md` — lazy keys, scroll cost, duplicate-key crashes
+- `state.md` — single source of truth for load UI
+- `concurrency.md` — lifecycle-aware collection on the same screen
+- `effects.md` — refresh belongs in event handlers, not composition body
 
 ## Primary Sources
 

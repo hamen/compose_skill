@@ -136,9 +136,11 @@ if (
   !composeAgentDocs.includes('references/paging.md') ||
   !composeAgentDocs.includes('collectAsLazyPagingItems') ||
   !composeAgentDocs.includes('itemKey') ||
-  !composeAgentDocs.includes('LoadState')
+  !composeAgentDocs.includes('LoadState') ||
+  !composeAgentDocs.includes('Golden Path') ||
+  !composeAgentDocs.includes('PagingData.from')
 ) {
-  throw new Error('compose-agent paging reference must cover collectAsLazyPagingItems, itemKey, and LoadState');
+  throw new Error('compose-agent paging reference must cover collectAsLazyPagingItems, itemKey, LoadState, golden path, and PagingData.from preview pattern');
 }
 
 if (!readFileSync('skills/compose-agent/references/performance.md', 'utf8').includes('references/paging.md')) {

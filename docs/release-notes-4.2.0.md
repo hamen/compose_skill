@@ -8,7 +8,7 @@ Compose Skill Suite 4.2.0 adds **Paging 3 in Compose** as a first-class review a
 
 ### `compose-agent` 4.2.0
 
-- Added `skills/compose-agent/references/paging.md`.
+- Added `skills/compose-agent/references/paging.md` — decision table, golden-path screen recipe, stable `itemKey`, `LoadState` branches, hard nos (`itemSnapshotList`, filter-in-composition), preview pattern. Targets LLM mistakes, not `PagingSource` implementation.
 - Added review step #14 for paging screens (`LazyPagingItems`, `collectAsLazyPagingItems`, `LoadState`, stable keys, user-driven refresh/retry).
 - Added core instruction and authoring-mode guardrail for paged feeds.
 - Cross-linked `performance.md` → `paging.md`.
