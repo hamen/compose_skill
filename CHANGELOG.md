@@ -2,6 +2,16 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.2.0 — 2026-06-17
+
+**Paging 3 in Compose — guardrails for paged lazy lists.**
+
+- **New reference.** Added `skills/compose-agent/references/paging.md` — when to page vs plain lists, `collectAsLazyPagingItems`, stable `itemKey`, `LoadState` UI, user-driven `refresh()` / `retry()`, anti-pattern checklist. No `PagingSource` / RemoteMediator cookbook.
+- **Review wiring.** `compose-agent` review step #14, core instruction, authoring guardrail, manifest keyword `paging`.
+- **Audit hooks.** `jetpack-compose-audit` adds paging search heuristic plus **Paging list correctness** (Performance) and **Paging load-state handling** (State) report signals — no fifth score category.
+- **Planning.** [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md) records scope and multi-agent validation plan.
+- **Versions.** `compose-agent` → `4.2.0`. `jetpack-compose-audit` → `4.2.0`.
+
 ### 4.1.2 — 2026-06-14
 
 **Repo hygiene — evals as data, changelog split out, launch cruft removed.**

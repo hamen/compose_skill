@@ -56,6 +56,22 @@ These ground:
 - reusable animated components exposing `animationSpec` and `label`
 - scoping `rememberInfiniteTransition` so it stops when the host leaves composition
 
+### Paging (Compose UI)
+
+- Android Developers: `Paging 3 with Compose`
+  `https://developer.android.com/topic/libraries/architecture/paging/v3-compose`
+- Android Developers: `Paging 3 overview`
+  `https://developer.android.com/topic/libraries/architecture/paging/v3-overview`
+- Android Developers: `androidx.paging.compose` reference
+  `https://developer.android.com/reference/kotlin/androidx/paging/compose/package-summary`
+
+These ground:
+
+- `collectAsLazyPagingItems()` integration
+- stable `itemKey` on paginated lazy lists
+- `LoadState` branches for loading / empty / error / append
+- user-driven `refresh()` / `retry()` rather than composition-time reload loops
+
 ### State
 
 - Android Developers: `State and Jetpack Compose`  

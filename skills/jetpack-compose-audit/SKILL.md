@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 4.1.2 — released 2026-06-14. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 4.2.0 — released 2026-06-17. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -201,6 +201,7 @@ Focus on:
 - expensive work in composition
 - avoidable recomposition
 - lazy list keys
+- paging list keys and `LazyPagingItems` misuse when `collectAsLazyPagingItems` is present
 - bad state-read timing
 - unstable or overly broad reads
 - backwards writes
@@ -216,6 +217,7 @@ Focus on:
 - reusable stateless seams
 - correct use of `remember` vs `rememberSaveable`
 - lifecycle-aware observable collection
+- paging `LoadState` handling (loading / empty / error / append) when `LazyPagingItems` is present
 - observable vs non-observable mutable state
 
 #### Side Effects

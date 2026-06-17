@@ -39,6 +39,7 @@ Search for:
 - `ComposeView`
 - `remember`
 - `mutableStateOf`
+- `collectAsLazyPagingItems|LazyPagingItems`
 
 If Compose usage is sparse, state that clearly in the report and reduce confidence.
 
@@ -202,6 +203,25 @@ There is no clean regex. Walk `items(..., key = ...)` / `itemsIndexed(..., key =
 - is the key computed from `hashCode()` on a non-`data class`?
 
 When uniqueness is not guaranteed, flag as a latent crash and suggest a dedup index or a synthesized key like `"${source}-${id}"`.
+
+### Paging-List Heuristic
+
+When `collectAsLazyPagingItems` / `LazyPagingItems` is present, paging-specific lazy-list bugs are in scope even if generic lazy-list searches were clean.
+
+1. Find paging UI files: `rg -l 'collectAsLazyPagingItems|LazyPagingItems' -g '*.kt'`
+2. For each hit, verify:
+   - `items(` / `itemsIndexed(` uses **`key =`** with stable domain ids (`itemKey { … }`), not index-only keys
+   - UI branches on **`loadState`** (refresh / append / error) — not a blank list during initial load or after failure
+   - **`refresh()`** / **`retry()`** are not invoked unconditionally from the composable body or a bare `LaunchedEffect(Unit)` without a documented one-shot reason
+   - no **`indexOf` / `indexOfFirst`** inside the paging item factory
+3. When keys are missing or index-based on a paginated feed, flag under Performance as **Paging list correctness** and recommend `compose-agent focus on paging`.
+4. When `LoadState.Error` is ignored or loading never resolves, flag under State management as **Paging load-state handling**.
+
+Positive signals to reward:
+
+- `items(count = lazyPagingItems.itemCount, key = lazyPagingItems.itemKey { it.id })`
+- top-level `when` on `loadState.refresh` / `loadState.append` with error retry via `lazyPagingItems.retry()`
+- pull-to-refresh wired to `lazyPagingItems.refresh()` on user action only
 
 ### Scaffold Inner-Padding Heuristic
 

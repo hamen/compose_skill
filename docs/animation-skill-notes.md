@@ -48,7 +48,7 @@ We verified the gap is real inside `compose-agent`: animation APIs appeared only
 1. **Should the audit ever add a standalone Animation category?** Leaning no. The current rubric already scores concrete defects in the existing categories, and adding a fifth category would make historical scores harder to compare.
 2. **Shared-element transitions** — own reference file, or a section in `animation.md`? It pulls in `SharedTransitionScope`, `AnimatedVisibilityScope`, `Modifier.sharedElement`, and has its own LLM tells (forgetting the scopes, key mismatches). Probably earns its own file once we see it requested.
 3. **Next steal from the issue tracker.** Ranked from the same mining pass:
-   - **Paging 3 in Compose** (#11, #25) — `collectAsLazyPagingItems`, `LazyPagingItems`, loadState handling, item keys. Real gap, medium size. Strongest next candidate.
+   - **Paging 3 in Compose** (#11, #25) — **shipped in 4.2.0** as `references/paging.md`; see `docs/paging-skill-plan.md` and convergence testing plan in `docs/release-notes-4.2.0.md`.
    - **(declined by us)** Architecture per-layer (#9), XML→Compose (#38) — both intentionally dropped: DAC covers architecture, and XML is dead weight in 2026.
 4. **Provenance signaling.** Worth being louder (README? per-reference footer?) that these references are sourced from declined upstream requests? Good marketing story, but don't want it to read as adversarial toward the Android team. Current choice: a single neutral line in the changelog. Revisit.
 
