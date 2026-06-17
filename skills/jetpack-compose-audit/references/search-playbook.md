@@ -214,6 +214,8 @@ When `collectAsLazyPagingItems` / `LazyPagingItems` is present, paging-specific 
    - UI branches on **`loadState`** (refresh / append / error) — not a blank list during initial load or after failure
    - **`refresh()`** / **`retry()`** are not invoked unconditionally from the composable body or a bare `LaunchedEffect(Unit)` without a documented one-shot reason
    - no **`indexOf` / `indexOfFirst`** inside the paging item factory
+   - the append branch handles **`LoadState.Error`** with a `retry()` footer, not only `LoadState.Loading`
+   - no **`lazyPagingItems[index]!!`** — null slots occur when `PagingConfig.enablePlaceholders = true`; check the null handling matches the config
 3. When keys are missing or index-based on a paginated feed, flag under Performance as **Paging list correctness** and recommend `compose-agent focus on paging`.
 4. When `LoadState.Error` is ignored or loading never resolves, flag under State management as **Paging load-state handling**.
 
