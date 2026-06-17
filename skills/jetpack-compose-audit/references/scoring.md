@@ -219,6 +219,7 @@ Deduct for:
 - duplicate manual loading flags (`mutableStateOf(isLoading)`) shadowing `loadState` on paging screens — two sources of truth for the same UX → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
 - `loadState.append is LoadState.Error` handled only as a spinner or not at all — append failures leave the user with no way to resume the feed; an append-error footer must offer `retry()` → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
 - `lazyPagingItems[index]!!` (or assuming every slot is non-null) — with `PagingConfig.enablePlaceholders = true`, slots are `null` while a page loads and `!!` NPE-crashes; the dual smell is a placeholder branch that can never run because placeholders are disabled → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+- `loadState.refresh is LoadState.Error -> FullScreenError()` with **no `itemCount == 0` guard** — a transient pull-to-refresh failure then wipes an already-loaded feed and replaces it with a full-screen error. Full-screen error should gate on `itemCount == 0`; refresh errors arriving with content on screen belong in a snackbar / inline retry → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
 
 When any of these paging rules affects the State management score, name it in the State section as **Paging load-state handling** rather than folding it into a generic state note.
 

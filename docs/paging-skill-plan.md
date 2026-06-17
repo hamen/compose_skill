@@ -13,7 +13,7 @@ When a screen uses `PagingData` / `LazyPagingItems`, agents today have no dedica
 - `items(lazyPagingItems.itemCount)` without stable `key`
 - ignoring `LoadState` (blank screens, infinite spinners, silent errors)
 - treating `LazyPagingItems` like an in-memory `List`
-- refresh canRefresh()` / `refresh()` wired from composition instead of user events
+- `refresh()` wired from composition instead of user events
 - keys from list index or `hashCode()` on paginated, merge-prone streams
 
 These are the same failure modes as lazy-list bugs, but with paging-specific triggers (append load, refresh, placeholder gaps, duplicate IDs across pages).
@@ -42,7 +42,7 @@ These are the same failure modes as lazy-list bugs, but with paging-specific tri
 
 - [x] `search-playbook.md` — Paging surface map + paging-list heuristic
 - [x] `scoring.md` — paging-specific deductions under existing categories
-- [x] `report-template.md` — **Paging list signals** (Performance) + **Paging state signals** (State)
+- [x] `report-template.md` — **Paging list signals** (Performance) + **Paging load-state signals** (State)
 - [x] `SKILL.md` — category focus bullets mention paging where relevant
 - [x] `canonical-sources.md` — Paging 3 Compose official URLs
 

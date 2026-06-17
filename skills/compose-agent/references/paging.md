@@ -15,7 +15,8 @@ For a numeric audit of an existing codebase, use the sibling `jetpack-compose-au
 | Feed that grows as the user scrolls (network / DB window) | `Flow<PagingData<T>>` + `collectAsLazyPagingItems()` |
 | List already complete in `StateFlow<List<T>>` | `LazyColumn` + `items(list)` — **do not add Paging** |
 | First paint while refresh runs | branch on `loadState.refresh is LoadState.Loading && itemCount == 0` |
-| Error on first load | `loadState.refresh is LoadState.Error` + `retry()` |
+| Error on first load (nothing on screen yet) | `loadState.refresh is LoadState.Error && itemCount == 0` + `retry()` |
+| Refresh error with content already shown | transient message (snackbar) + keep the list — **do not** replace the feed with a full-screen error |
 | Empty feed after successful load | `loadState.refresh is LoadState.NotLoading && itemCount == 0` |
 | Footer "loading more" | `loadState.append is LoadState.Loading` |
 | Footer error | `loadState.append is LoadState.Error` + retry affordance |
@@ -40,13 +41,23 @@ fun FeedScreen(viewModel: FeedViewModel) {
         lazyPagingItems.loadState.refresh is LoadState.Loading && lazyPagingItems.itemCount == 0 -> {
             LoadingContent()
         }
-        lazyPagingItems.loadState.refresh is LoadState.Error -> {
+        // Full-screen error ONLY when there is nothing to show. A refresh that
+        // fails while a feed is already on screen must NOT blow the list away.
+        lazyPagingItems.loadState.refresh is LoadState.Error && lazyPagingItems.itemCount == 0 -> {
             ErrorContent(onRetry = { lazyPagingItems.retry() })
         }
         lazyPagingItems.loadState.refresh is LoadState.NotLoading && lazyPagingItems.itemCount == 0 -> {
             EmptyContent()
         }
         else -> {
+            // itemCount > 0: keep the list. A failed pull-to-refresh surfaces as a
+            // transient message, not a full-screen replacement.
+            val refreshState = lazyPagingItems.loadState.refresh
+            LaunchedEffect(refreshState) {
+                if (refreshState is LoadState.Error) {
+                    // snackbarHostState.showSnackbar(...) with a Retry action -> lazyPagingItems.retry()
+                }
+            }
             PullToRefreshBox(
                 isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
                 onRefresh = { lazyPagingItems.refresh() },
@@ -82,7 +93,7 @@ ViewModel guardrail: expose `Flow<PagingData<Post>>` built once and **`cachedIn(
 
 **LLM tell:** `viewModel.feed.collectAsState()` then manually iterating — there is no supported `PagingData` → `List` shortcut for infinite feeds.
 
-**LLM tell:** `viewModel.feed.collectAsStateWithLifecycle()` on a `Flow<PagingData<T>>`. The lifecycle rule that holds for every other screen does **not** transfer here — `collectAsLazyPagingItems()` is the only supported collector, and it is already lifecycle-aware. Treat "this Flow needs `collectAsStateWithLifecycle`" as not applying to `PagingData`.
+**LLM tell:** `viewModel.feed.collectAsStateWithLifecycle()` on a `Flow<PagingData<T>>`. The lifecycle rule that holds for every other screen does **not** transfer here. `PagingData` is a one-shot stream consumed by a dedicated differ — there is no supported path to collect it through `collectAsStateWithLifecycle`; `collectAsLazyPagingItems()` is the collector that drives the differ. (Note it is not "lifecycle-aware" in the `repeatOnLifecycle` sense — it collects for as long as it is in composition; backgrounding does not pause it. That is expected for paging and not something to "fix" by reaching for `collectAsStateWithLifecycle`.) Treat "this Flow needs `collectAsStateWithLifecycle`" as not applying to `PagingData`.
 
 <https://developer.android.com/topic/libraries/architecture/paging/v3-compose#collect-lazyPagingItems>
 
@@ -109,6 +120,7 @@ Rules:
 - Never use **`hashCode()`** on a non-`data class` or on objects that can collide across pages.
 - Duplicate backend IDs (merged feeds, reconnect storms) → dedupe in the repository or synthesize keys (`"${source}-${id}"`). Compose crashes with `Key ... was already used` otherwise.
 - No **`indexOf` / `indexOfFirst`** inside the item factory — same O(n²) and crash profile as non-paging lazy lists. See `performance.md`.
+- For **heterogeneous** paged feeds (ads, headers, mixed row types), pass **`contentType = lazyPagingItems.itemContentType { … }`** alongside `itemKey`. Without it Compose cannot reuse slots across differently-shaped items and recomposition cost climbs — the same rule as `contentType` on a plain lazy list.
 
 <https://developer.android.com/reference/kotlin/androidx/paging/compose/LazyPagingItems#itemKey(kotlin.Function1)>
 
@@ -119,18 +131,23 @@ Rules:
 | Signal | Typical UI |
 |--------|------------|
 | `refresh is Loading` && `itemCount == 0` | Full-screen loading |
-| `refresh is Error` | Error + `retry()` |
+| `refresh is Error` && `itemCount == 0` | Full-screen error + `retry()` |
+| `refresh is Error` && `itemCount > 0` | Transient message (snackbar) — keep the list |
 | `refresh is NotLoading` && `itemCount == 0` | Empty state |
 | `append is Loading` | Footer spinner / row placeholder |
 | `append is Error` | Snackbar or inline retry on footer |
 
 **LLM tell:** rendering `LazyColumn` with zero items and no loading/error branch — users see a blank screen while refresh runs or after a failed fetch.
 
+**LLM tell:** a bare `refresh is LoadState.Error -> ErrorContent()` branch with **no `itemCount` guard** — a transient pull-to-refresh failure then wipes an already-loaded feed and replaces it with a full-screen error. Gate the full-screen error on `itemCount == 0`; surface refresh errors that arrive with content already on screen as a snackbar/inline retry instead.
+
 **LLM tell:** calling **`refresh()`** unconditionally in `LaunchedEffect(Unit)` or in the composable body to "load data on enter." Initial load is **`PagingData`'s job**; `refresh()` is for **user-initiated** reload. One-shot navigation args belong in the ViewModel / `Pager` factory, not a composition-time refresh loop.
 
 **LLM tell:** a parallel `mutableStateOf(isLoading)` shadowing `loadState` — two sources of truth for the same UX. Prefer `loadState` unless the design genuinely decouples them.
 
 Use **`retry()`** after `LoadState.Error`. Wire **`refresh()`** to pull-to-refresh or explicit reload actions only.
+
+**`prepend`** usually needs no UI of its own (bidirectional feeds are rare); when it does, mirror the `append` pattern — a header spinner on `prepend is Loading`, a header retry on `prepend is Error`. Do not invent a separate loading flag for it.
 
 <https://developer.android.com/reference/kotlin/androidx/paging/compose/LazyPagingItems>
 

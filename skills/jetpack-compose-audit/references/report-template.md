@@ -109,7 +109,7 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 **Paging load-state signals**
 
 - Status: [clean / risky / not present / not inspected]
-- If risky, state exactly which paging rule affected State: ignored `LoadState.Error`, missing empty state, stuck refresh spinner, duplicate manual loading flag shadowing `loadState`, append error with no `retry()` footer, or `lazyPagingItems[index]!!` / null-slot handling mismatched to `PagingConfig.enablePlaceholders`.
+- If risky, state exactly which paging rule affected State: ignored `LoadState.Error`, missing empty state, stuck refresh spinner, duplicate manual loading flag shadowing `loadState`, append error with no `retry()` footer, full-screen refresh error with no `itemCount == 0` guard (wipes an already-loaded feed), or `lazyPagingItems[index]!!` / null-slot handling mismatched to `PagingConfig.enablePlaceholders`.
 - Keep missing keys / index keys on `LazyPagingItems` in Performance (**Paging list correctness**) instead.
 
 **Evidence**
