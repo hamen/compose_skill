@@ -9,7 +9,7 @@ argument-hint: "[repo path or module path]"
 
 This skill audits Android Jetpack Compose repositories with a strict, evidence-based report.
 
-**Skill version:** 4.1.2 — released 2026-06-14. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
+**Skill version:** 4.2.0 — released 2026-06-17. **Compose track:** Kotlin 2.0.20+ / Compose Compiler 1.5.4+ (Strong Skipping Mode default). See the README changelog for what changed.
 
 It is intentionally focused on four categories:
 
@@ -201,6 +201,7 @@ Focus on:
 - expensive work in composition
 - avoidable recomposition
 - lazy list keys
+- paging list keys and `LazyPagingItems` misuse when `collectAsLazyPagingItems` is present
 - bad state-read timing
 - unstable or overly broad reads
 - backwards writes
@@ -216,6 +217,7 @@ Focus on:
 - reusable stateless seams
 - correct use of `remember` vs `rememberSaveable`
 - lifecycle-aware observable collection
+- paging `LoadState` handling (loading / empty / error / append) when `LazyPagingItems` is present
 - observable vs non-observable mutable state
 
 #### Side Effects
@@ -229,6 +231,7 @@ Focus on:
 - cleanup correctness
 - lifecycle-aware effect behavior
 - animations driven from `LaunchedEffect(target)` for target-driven state changes (not from the composition body; `rememberCoroutineScope().launch { animateTo(...) }` is usually for event- or gesture-driven animation)
+- paging `LazyPagingItems.refresh()` / `retry()` called from composition or `LaunchedEffect(Unit)` to "load on enter" — initial load is `PagingData`'s job; these are user-initiated only
 
 #### Composable API Quality
 
@@ -312,6 +315,7 @@ Include:
 - one-line judgment for each category, with the applied ceiling if any (e.g. "Performance 8/10 — capped by the SSM-on table: recreated `FeedItemUiModel` params")
 - when animation defects affected Performance, name them explicitly in the Performance line (e.g. "Performance 6/10 — animated `offset` reads recompose `DrawerContent` every frame")
 - when animation defects affected Side Effects, name them explicitly in the Side Effects line (e.g. "Side Effects 5/10 — `scope.launch { animateTo(...) }` in composition on `SettingsScreen`")
+- when paging defects affected Side Effects, name them explicitly in the Side Effects line (e.g. "Side Effects 6/10 — `LaunchedEffect(Unit) { feed.refresh() }` on `FeedScreen` loads from composition")
 - compiler-report highlights when Step 4 succeeded: Strong Skipping on/off (or mixed across modules), which ceiling table was applied, module-wide `skippable%`, named-only `skippable%`, which metric actually bound the cap, count of unstable shared types, and any module that failed to build
 - **top three actionable fixes**, each with:
   - the concrete change ("add `key = { it.id }` to `items(...)` in `feed/FeedList.kt:42`")
@@ -319,7 +323,7 @@ Include:
   - one official doc URL from `references/canonical-sources.md`
   - expected impact that matches the active ceiling table: on SSM-off, frame it in terms of named-only `skippable%` / unstable-param reductions; on SSM-on, frame it in terms of removing instance-recreation churn, fixing expensive / broken `equals()`, or clearing the binding cap
 - whether a `material-3` audit is worth running next
-- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, `compose-agent focus on kmp`, or `compose-agent focus on animation`
+- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, `compose-agent focus on kmp`, `compose-agent focus on animation`, or `compose-agent focus on paging`
 
 The top-three fixes in the chat summary MUST be the same items as the report's `Prioritized Fixes` list (same file paths, same doc links). Do not add generic advice in chat that isn't in the written report.
 
@@ -346,7 +350,7 @@ For medium or large repositories:
 - Do not inflate the performance score just because the app uses Compose.
 - Do not over-penalize isolated experiments or sample files unless they are part of production paths.
 - Do not score design in v1.
-- Do not flag `LaunchedEffect(Unit)` or `LaunchedEffect(true)` on its own — the "run once" pattern is idiomatic. Only flag it when the body captures a value that may change without `rememberUpdatedState`.
+- Do not flag `LaunchedEffect(Unit)` or `LaunchedEffect(true)` on its own — the "run once" pattern is idiomatic. Only flag it when the body captures a value that may change without `rememberUpdatedState`. **Paging carve-out:** `LaunchedEffect(Unit) { lazyPagingItems.refresh() }` (or `retry()`) *is* a Side Effects defect — initial paged load is `PagingData`'s job, and `refresh()`/`retry()` are user-initiated. Flag it.
 - Do not deduct on Compose Multiplatform code paths for Android-only APIs (`collectAsStateWithLifecycle`, `lifecycle-runtime-compose`). Note the platform constraint as a tradeoff instead.
 - Do not double-count the same root cause across categories. A stability problem typically surfaces in both Performance and State — pick the dominant category and cross-reference.
 

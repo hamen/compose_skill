@@ -132,6 +132,31 @@ if (!readFileSync('skills/compose-agent/references/performance.md', 'utf8').incl
   throw new Error('compose-agent performance.md must cross-link references/animation.md');
 }
 
+if (
+  !composeAgentDocs.includes('references/paging.md') ||
+  !composeAgentDocs.includes('collectAsLazyPagingItems') ||
+  !composeAgentDocs.includes('itemKey') ||
+  !composeAgentDocs.includes('LoadState') ||
+  !composeAgentDocs.includes('Golden Path') ||
+  !composeAgentDocs.includes('PagingData.from')
+) {
+  throw new Error('compose-agent paging reference must cover collectAsLazyPagingItems, itemKey, LoadState, golden path, and PagingData.from preview pattern');
+}
+
+if (!readFileSync('skills/compose-agent/references/performance.md', 'utf8').includes('references/paging.md')) {
+  throw new Error('compose-agent performance.md must cross-link references/paging.md');
+}
+
+if (
+  !auditDocs.includes('Paging list correctness') ||
+  !auditDocs.includes('Paging load-state handling') ||
+  !auditDocs.includes('Paging list signals') ||
+  !auditDocs.includes('Paging load-state signals') ||
+  !auditDocs.includes('Paging side-effect signals')
+) {
+  throw new Error('jetpack-compose-audit docs must surface paging findings in Performance, State, and Side Effects report sections');
+}
+
 const auditSkill = readFileSync('skills/jetpack-compose-audit/SKILL.md', 'utf8');
 const auditVersion = JSON.parse(readFileSync('skills/jetpack-compose-audit/.claude-plugin/plugin.json', 'utf8')).version;
 if (!auditSkill.includes(`**Skill version:** ${auditVersion}`)) {

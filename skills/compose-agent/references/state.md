@@ -2,6 +2,8 @@
 
 Compose state rules LLMs routinely get wrong. Most mistakes come from one of three places: state placed at the wrong altitude, `remember` without the right key, or treating `State<T>` like a value instead of an observable.
 
+For paged feeds (`Flow<PagingData<T>>`), the collection and load-state rules live in `paging.md` — that stream is the one exception that is **not** collected with `collectAsStateWithLifecycle()`.
+
 ## State Hoisting — Where State Lives
 
 Default shape for a screen:

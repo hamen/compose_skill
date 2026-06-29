@@ -83,6 +83,13 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - If risky, state exactly which animation rule affected Performance: composition-phase animated reads, `Animatable` not remembered, `rememberInfiniteTransition` kept alive offscreen, deprecated `animateItemPlacement()`, or missing lazy-list keys for `animateItem()`.
 - Keep animation-driving mistakes in Side Effects instead when the root cause is launching animation work from composition or using `rememberCoroutineScope().launch { animateTo(...) }` for target-driven state changes.
 
+**Paging list signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, state exactly which paging rule affected Performance: missing or index-only keys on `LazyPagingItems`, `itemSnapshotList` primary UI wiring, or paginated-stream duplicate-key risk.
+- Keep ignored `LoadState` / duplicate loading flags in State Management instead (**Paging load-state handling**).
+- Keep unconditional `refresh()` / `retry()` from composition in Side Effects.
+
 **Evidence**
 
 - `path/to/file1.kt:LL` — [brief reason] · References: <https://developer.android.com/...>
@@ -98,6 +105,12 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 
 - [problem 1]
 - [problem 2]
+
+**Paging load-state signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, state exactly which paging rule affected State: ignored `LoadState.Error`, missing empty state, stuck refresh spinner, duplicate manual loading flag shadowing `loadState`, append error with no `retry()` footer, full-screen refresh error with no `itemCount == 0` guard (wipes an already-loaded feed), or `lazyPagingItems[index]!!` / null-slot handling mismatched to `PagingConfig.enablePlaceholders`.
+- Keep missing keys / index keys on `LazyPagingItems` in Performance (**Paging list correctness**) instead.
 
 **Evidence**
 
@@ -119,6 +132,11 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 
 - Status: [clean / risky / not present / not inspected]
 - If risky, name the Side Effects issue explicitly: `Animatable.animateTo()` from composition, `rememberCoroutineScope().launch { animateTo(...) }` reacting to state instead of `LaunchedEffect(target)`, or `Animatable` + `LaunchedEffect` where `animate*AsState` / `updateTransition` would suffice.
+
+**Paging side-effect signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, name the Side Effects issue explicitly: `LazyPagingItems.refresh()` / `retry()` called unconditionally from composition or `LaunchedEffect(Unit)` to "load on enter" (initial load is `PagingData`'s job; `refresh()`/`retry()` are user-initiated). Keep missing keys / `LoadState` handling in Performance / State instead.
 
 **Evidence**
 
@@ -167,6 +185,7 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - Run `compose-agent focus on focus` if keyboard, D-pad, TV, desktop, ChromeOS, or focus-restoration behavior is present.
 - Run `compose-agent focus on kmp` if Compose Multiplatform, KMP source sets, `expect` / `actual`, or platform interop boundaries are present.
 - Run `compose-agent focus on animation` if animation findings need a file-scope rewrite rather than an audit-level diagnosis.
+- Run `compose-agent focus on paging` if paging list / load-state findings need a file-scope rewrite rather than an audit-level diagnosis.
 ```
 
 ## Tone

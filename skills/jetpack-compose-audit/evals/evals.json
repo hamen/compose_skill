@@ -1,6 +1,6 @@
 {
   "skill_name": "jetpack-compose-audit",
-  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x. These are the audit/review acceptance criteria the skill must preserve; they also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
+  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x, plus Paging 3 in Compose list/load-state behavior added in 4.2.0 (cases 10-11). These are the audit/review acceptance criteria the skill must preserve; they also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
   "evals": [
     {
       "id": 0,
@@ -120,6 +120,32 @@
         "Flag event callback placement so `onClose` is not confused with content.",
         "Discuss calling the same content slot from multiple branches as a lifecycle/state-preservation risk.",
         "Recommend a layout shape that preserves slot lifecycle, or `movableContentOf` with a freshness strategy when moving content is intentional."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Audit this paged feed:\n@Composable fun FeedScreen(viewModel: FeedViewModel) {\n    val items = viewModel.feed.collectAsLazyPagingItems()\n    LazyColumn {\n        items(items.itemCount) { index ->\n            items[index]?.let { PostRow(it) }\n        }\n    }\n}",
+      "expected_output": "An audit flagging the index-keyed paged list (no stable `itemKey`) and the absence of any `LoadState` branch, recommending `itemKey { it.id }` and refresh/empty/error/append handling, scoped under Performance (list correctness) and State (load-state handling) rather than as a new paging score.",
+      "files": [],
+      "expectations": [
+        "Flag `items(items.itemCount)` without a stable `itemKey` on a paginated feed as index-keying.",
+        "Recommend `key = items.itemKey { it.id }` from stable domain ids, not bare index or `hashCode()`.",
+        "Flag the missing `LoadState` handling: zero items with no loading/empty/error branch is a blank-screen tell.",
+        "Note the null-slot branch (`items[index]?.let { … }` with no placeholder) should match `PagingConfig.enablePlaceholders`.",
+        "Map findings to existing Performance (paging list correctness) and State (paging load-state) categories, not a separate paging score."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Audit this paged screen's load handling:\n@Composable fun FeedScreen(viewModel: FeedViewModel) {\n    val items = viewModel.feed.collectAsLazyPagingItems()\n    LaunchedEffect(Unit) { items.refresh() }\n    if (items.loadState.refresh is LoadState.Error) FullScreenError(onRetry = { items.retry() })\n    LazyColumn { items(items.itemCount, key = items.itemKey { it.id }) { i -> items[i]?.let { PostRow(it) } } }\n}",
+      "expected_output": "An audit flagging the composition-time `refresh()` in `LaunchedEffect(Unit)` and the unguarded full-screen error branch that wipes already-loaded content on a transient refresh failure, recommending user-driven refresh and gating the full-screen error on `itemCount == 0`.",
+      "files": [],
+      "expectations": [
+        "Flag `items.refresh()` in `LaunchedEffect(Unit)`: initial load is `PagingData`'s job; `refresh()` is for user-initiated reload.",
+        "Classify the composition-time `refresh()` under Side Effects (paging side-effect signal), not Performance or State.",
+        "Flag the `refresh is LoadState.Error` branch with no `itemCount` guard — a transient failure replaces an already-loaded feed with a full-screen error.",
+        "Recommend gating full-screen error on `itemCount == 0` and surfacing refresh errors that arrive with content as a snackbar / inline retry.",
+        "Credit the correct stable `itemKey` already present instead of re-flagging it."
       ]
     }
   ]

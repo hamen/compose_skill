@@ -121,6 +121,11 @@ Deduct for:
 
 When any of these animation rules affects the Performance score, name it in the Performance section as **Animation phase correctness** rather than folding it into a generic recomposition note. Readers should be able to see at a glance whether animation contributed to the score.
 
+- `LazyPagingItems` rendered with `items(count = …)` but **missing `key =`** or using **index-only keys** on a paginated/merged feed — reorder, refresh, and prepend can crash or thrash compositions → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose), [lists](https://developer.android.com/develop/ui/compose/lists)
+- treating `LazyPagingItems` like a materialized list (`itemSnapshotList` primary UI path, `forEach` into a nested lazy list) instead of the supported `items(count = …)` integration → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+
+When any of these paging rules affects the Performance score, name it in the Performance section as **Paging list correctness** rather than folding it into a generic lazy-list note.
+
 Suggested interpretation:
 
 - `9-10`: clean patterns are common and performance smells are rare
@@ -210,6 +215,13 @@ Deduct for:
 - `mutableStateOf` held in a `ViewModel` instead of `StateFlow` / `MutableStateFlow` — couples the ViewModel to the Compose runtime and hurts testability. App-level teams may accept this tradeoff deliberately; note the tradeoff rather than deducting heavily unless it is widespread → [architecture](https://developer.android.com/develop/ui/compose/architecture)
 - ViewModel-to-UI events modeled only as `Channel` / `SharedFlow` when the outcome must survive lifecycle gaps (snackbars, validation messages, navigation decisions). Prefer durable UI state with an acknowledgement callback for must-deliver outcomes; reserve `Channel` / `SharedFlow` for ephemeral signals with documented delivery semantics → [UI events](https://developer.android.com/topic/architecture/ui-layer/events), [architecture](https://developer.android.com/develop/ui/compose/architecture)
 - `rememberSaveable` used inside a `LazyListScope` item factory (per-item expansion state, per-item form fields) — each entry is serialized into the saved-state `Bundle` which is capped at ~1 MB; large lists trigger `TransactionTooLargeException` → [state](https://developer.android.com/develop/ui/compose/state)
+- paging UI that ignores `LazyPagingItems.loadState` — blank screen during initial refresh, stuck spinner, or silent failure with no `retry()` path → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+- duplicate manual loading flags (`mutableStateOf(isLoading)`) shadowing `loadState` on paging screens — two sources of truth for the same UX → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+- `loadState.append is LoadState.Error` handled only as a spinner or not at all — append failures leave the user with no way to resume the feed; an append-error footer must offer `retry()` → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+- `lazyPagingItems[index]!!` (or assuming every slot is non-null) — with `PagingConfig.enablePlaceholders = true`, slots are `null` while a page loads and `!!` NPE-crashes; the dual smell is a placeholder branch that can never run because placeholders are disabled → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+- `loadState.refresh is LoadState.Error -> FullScreenError()` with **no `itemCount == 0` guard** — a transient pull-to-refresh failure then wipes an already-loaded feed and replaces it with a full-screen error. Full-screen error should gate on `itemCount == 0`; refresh errors arriving with content on screen belong in a snackbar / inline retry → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose)
+
+When any of these paging rules affects the State management score, name it in the State section as **Paging load-state handling** rather than folding it into a generic state note.
 
 Suggested interpretation:
 
@@ -255,6 +267,9 @@ Deduct for:
 - `navController.navigate(...)` invoked from the composition body instead of an event handler or effect → [navigation](https://developer.android.com/develop/ui/compose/navigation)
 - `rememberCoroutineScope().launch { animatable.animateTo(target) }` where a `LaunchedEffect(target) { animatable.animateTo(target) }` would more clearly express target-driven animation — prefer `LaunchedEffect(target)` when restart semantics should follow the key automatically; keep `rememberCoroutineScope()` for event- or gesture-driven animation → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - `Animatable.animateTo(...)` invoked from the composition body (not from inside an effect) — runs on every recomposition and never cancels → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+- unconditional `lazyPagingItems.refresh()` / `retry()` from the composable body or bare `LaunchedEffect(Unit)` without a documented one-shot reason — initial load belongs to `PagingData`; refresh is user-driven → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
+
+When this paging rule affects the Side Effects score, name it in the Side Effects section as **Paging side-effect signals** rather than folding it into a generic effect note — mirroring **Paging list correctness** (Performance) and **Paging load-state handling** (State).
 
 Suggested interpretation:
 

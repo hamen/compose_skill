@@ -138,6 +138,8 @@ Safe in composition: simple field reads (`.size`, `.length`, `.isEmpty()`, index
 
 See `references/animation.md` for API choice, `updateTransition`, `AnimatedContent`, lazy-list item animation, infinite transitions, gesture-driven `Animatable`, and reduced motion.
 
+See `references/paging.md` for Paging 3 lazy-list keys, `LoadState`, and paginated-stream crash patterns that reuse lazy-list rules with paging-specific triggers.
+
 Core performance rules:
 
 - Target-driven: `LaunchedEffect(target) { animatable.animateTo(target) }`, or better, `animate*AsState` / `updateTransition` with no effect at all. Event-driven animations launched from click or gesture handlers can use `rememberCoroutineScope()`.

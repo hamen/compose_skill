@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "compose-agent",
-      "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, animation APIs, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, Android launch resources, and idiomatic Kotlin.",
+      "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, animation APIs, Paging 3 in Compose, performance-aware modifiers, Navigation 3, coroutines on lifecycle, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, Android launch resources, and idiomatic Kotlin.",
       "author": { "name": "Ivan Morgillo" },
       "category": "development",
       "source": {
@@ -16,11 +16,11 @@
         "url": "https://github.com/hamen/compose_skill.git",
         "path": "skills/compose-agent"
       },
-      "tags": ["android", "jetpack-compose", "kotlin", "animation", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen", "agent-skill"]
+      "tags": ["android", "jetpack-compose", "kotlin", "animation", "paging", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen", "agent-skill"]
     },
     {
       "name": "jetpack-compose-audit",
-      "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score with every deduction cited against developer.android.com and coverage notes for animation performance, UI tests, focus/keyboard, Compose Multiplatform, and Android launch UX surfaces.",
+      "description": "Strict, evidence-based audit for Android Jetpack Compose repositories. Produces a 0-100 score with every deduction cited against developer.android.com and coverage notes for animation performance, Paging 3 list/load-state correctness, UI tests, focus/keyboard, Compose Multiplatform, and Android launch UX surfaces.",
       "author": { "name": "Ivan Morgillo" },
       "category": "development",
       "source": {
@@ -28,7 +28,7 @@
         "url": "https://github.com/hamen/compose_skill.git",
         "path": "skills/jetpack-compose-audit"
       },
-      "tags": ["android", "jetpack-compose", "audit", "performance", "animation", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen"]
+      "tags": ["android", "jetpack-compose", "audit", "performance", "animation", "paging", "ui-testing", "focus", "kotlin-multiplatform", "splash-screen"]
     }
   ]
 }

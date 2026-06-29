@@ -6,14 +6,14 @@
 
 <p align="center">
   <a href="./bin/ci"><img alt="bin/ci passing" src="https://img.shields.io/badge/bin%2Fci-passing-2ea043"></a>
-  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.1.2"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
+  <a href="https://github.com/hamen/compose_skill/releases"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/hamen/compose_skill?color=0a7f60"></a>
   <img alt="Skills" src="https://img.shields.io/badge/skills-2-7c3aed">
   <img alt="Compose animation ready" src="https://img.shields.io/badge/Compose-animation%20ready-f97316">
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**Version 4.1.2 · released 2026-06-14** — Repo hygiene patch: the 4.1.0 eval scenarios are now a machine-readable [`evals.json`](./skills/jetpack-compose-audit/evals/evals.json) inside the audit skill instead of prose in `docs/`, the full release history moved to [`CHANGELOG.md`](./CHANGELOG.md), and the launch-tweet drafts were dropped from `docs/`. No skill-behavior changes. Both skills ship as `4.1.2`.
+**Version 4.2.0 · 2026-06-17 (release candidate — convergence testing before GA tag)** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Multi-agent convergence testing planned before GA tag. Both skills ship as `4.2.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
@@ -27,17 +27,17 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 
 ## What's new
 
-### 4.1.2 — 2026-06-14
+### 4.2.0 — 2026-06-17
 
-**Repo hygiene — evals as data, changelog split out, launch cruft removed.**
+**Paging 3 in Compose — guardrails for paged lazy lists.**
 
-- **Evals are machine-readable now.** The 4.1.0 acceptance scenarios moved from prose in `docs/evals-4.1.0.md` to [`skills/jetpack-compose-audit/evals/evals.json`](./skills/jetpack-compose-audit/evals/evals.json) — `skill_name` + ten `{prompt, expected_output, expectations}` cases, the canonical eval layout (an `evals/` directory inside the skill).
-- **Changelog split out.** Full release history now lives in [`CHANGELOG.md`](./CHANGELOG.md); this README keeps only the latest release here.
-- **Dropped launch cruft.** Removed the launch-tweet drafts (`docs/tweet-*.md`) from the repo; release notes stay in `docs/`.
-- **No behavior change.** Skill guidance, audit scoring, and search leads are identical to `4.1.1`.
-- **Versions.** `compose-agent` → `4.1.2`. `jetpack-compose-audit` → `4.1.2`.
+- **New reference.** [`skills/compose-agent/references/paging.md`](./skills/compose-agent/references/paging.md) — decision table, golden path, stable keys, `LoadState`, hard nos. Targets LLM mistakes, not `PagingSource` implementation.
+- **Review wiring.** New step #14 in `compose-agent`; scoped entry `compose-agent focus on paging`.
+- **Audit hooks.** Report signals **Paging list correctness** (Performance) and **Paging load-state handling** (State) — no fifth score category.
+- **Plan.** [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md) includes the multi-agent validation checklist.
+- **Versions.** `compose-agent` → `4.2.0`. `jetpack-compose-audit` → `4.2.0`.
 
-For the full release history, see [CHANGELOG.md](./CHANGELOG.md).
+For release detail, see [`docs/release-notes-4.2.0.md`](./docs/release-notes-4.2.0.md). Full history: [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -365,6 +365,7 @@ The reference files are deliberately loadable in isolation. Scoping a review to 
 | focus, keyboard, D-pad, TV/desktop navigation | `compose-agent focus on focus` |
 | KMP/CMP source sets, `expect`/`actual`, platform interop | `compose-agent focus on kmp` |
 | animation API choice, lifecycle, labels, phase-correct reads | `compose-agent focus on animation` |
+| Paging 3 in Compose (`LazyPagingItems`, keys, `LoadState`) | `compose-agent focus on paging` |
 | deprecated / soft-deprecated APIs and Android launch resources | `compose-agent focus on api` |
 | idiomatic Kotlin / Android style | `compose-agent focus on kotlin` |
 
@@ -408,6 +409,7 @@ skills/compose-agent/
     focus.md                     FocusRequester, keyboard / D-pad input, focus restoration, focus tests
     kmp.md                       KMP/CMP boundaries, expect/actual, interfaces, platform leaf composables
     animation.md                 animation API choice, lifecycle, labels, deferred animated reads
+    paging.md                    Paging 3 in Compose: keys, LoadState, refresh/retry guardrails
     kotlin.md                    Kotlin conventions + Android Kotlin style the LLM misses
 ```
 
