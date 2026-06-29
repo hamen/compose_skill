@@ -321,7 +321,7 @@ Include:
   - one official doc URL from `references/canonical-sources.md`
   - expected impact that matches the active ceiling table: on SSM-off, frame it in terms of named-only `skippable%` / unstable-param reductions; on SSM-on, frame it in terms of removing instance-recreation churn, fixing expensive / broken `equals()`, or clearing the binding cap
 - whether a `material-3` audit is worth running next
-- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, `compose-agent focus on kmp`, or `compose-agent focus on animation`
+- whether focused follow-up is worth running next: `compose-agent focus on testing`, `compose-agent focus on focus`, `compose-agent focus on kmp`, `compose-agent focus on animation`, or `compose-agent focus on paging`
 
 The top-three fixes in the chat summary MUST be the same items as the report's `Prioritized Fixes` list (same file paths, same doc links). Do not add generic advice in chat that isn't in the written report.
 

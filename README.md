@@ -13,7 +13,7 @@
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**Version 4.2.0 · released 2026-06-17** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Multi-agent convergence testing planned before GA tag. Both skills ship as `4.2.0`.
+**Version 4.2.0 · 2026-06-17 (release candidate — convergence testing before GA tag)** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Multi-agent convergence testing planned before GA tag. Both skills ship as `4.2.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 

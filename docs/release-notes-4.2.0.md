@@ -1,6 +1,6 @@
 # Compose Skill Suite 4.2.0 Release Notes
 
-Released: 2026-06-17 (draft — convergence testing pending)
+Status: release candidate — 2026-06-17 (convergence testing pending before GA tag)
 
 Compose Skill Suite 4.2.0 adds **Paging 3 in Compose** as a first-class review and audit surface for AI coding agents — using the same thesis as animation 4.0: **LLM tells and guardrails**, not an API encyclopedia.
 
@@ -35,7 +35,7 @@ The new paging reference targets predictable LLM mistakes:
 
 ## Planning Doc
 
-See [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md) for scope decisions, audit signal mapping, and the multi-agent validation plan.
+See [`docs/paging-skill-plan.md`](./paging-skill-plan.md) for scope decisions, audit signal mapping, and the multi-agent validation plan.
 
 ## Upgrade
 

@@ -147,6 +147,8 @@ Rules:
 
 Use **`retry()`** after `LoadState.Error`. Wire **`refresh()`** to pull-to-refresh or explicit reload actions only.
 
+**DB-backed / `RemoteMediator` feeds:** `loadState.refresh` reflects the *mediator* state, so it can flip to `NotLoading` before the cached page is actually emitted — a brief blank flash. When the feed is backed by a local cache (Room), branch on **`loadState.source.refresh`** for the local-load signal (and `loadState.mediator?.refresh` for the network one) instead of the combined `loadState.refresh`. This reference is UI guidance, not a `RemoteMediator` cookbook — just know which signal to read.
+
 **`prepend`** usually needs no UI of its own (bidirectional feeds are rare); when it does, mirror the `append` pattern — a header spinner on `prepend is Loading`, a header retry on `prepend is Error`. Do not invent a separate loading flag for it.
 
 <https://developer.android.com/reference/kotlin/androidx/paging/compose/LazyPagingItems>
@@ -200,7 +202,7 @@ Before returning paging UI code, verify:
 
 - `performance.md` — lazy keys, scroll cost, duplicate-key crashes
 - `state.md` — single source of truth for load UI
-- `concurrency.md` — lifecycle-aware collection on the same screen
+- `concurrency.md` — lifecycle-aware collection of **other** (non-`PagingData`) flows on the same screen; it does not apply to `LazyPagingItems`
 - `effects.md` — refresh belongs in event handlers, not composition body
 
 ## Primary Sources

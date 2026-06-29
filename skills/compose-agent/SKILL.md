@@ -37,7 +37,7 @@ If the repo pins older versions, match the repo — but call out what the modern
 11. Review **focus and keyboard / D-pad navigation** using `references/focus.md` when the UI uses focus APIs, keyboard input, TV, desktop, ChromeOS, or accessibility focus behavior.
 12. Review **Compose Multiplatform / KMP boundaries** using `references/kmp.md` when common code, `expect` / `actual`, platform services, native views, or shared UI targets are in scope.
 13. Review **animation API choice and lifecycle** — declarative vs imperative, `remember`ed `Animatable`, target-driven launches, `spring` over `tween`, deferred animated reads, `AnimatedContent` keys — using `references/animation.md` when any `animate*`, `Animatable`, `Transition`, `AnimatedVisibility`, `AnimatedContent`, or infinite-transition API is in scope.
-14. Review **Paging 3 in Compose** — `collectAsLazyPagingItems`, stable `itemKey`, `LoadState` branches, lifecycle-safe collection, user-driven `refresh()` / `retry()` — using `references/paging.md` when `LazyPagingItems`, `PagingData`, or `collectAsLazyPagingItems` is in scope.
+14. Review **Paging 3 in Compose** — `collectAsLazyPagingItems` (the paging differ — **not** `collectAsStateWithLifecycle`, which does not apply to `PagingData`), stable `itemKey`, `LoadState` branches, user-driven `refresh()` / `retry()` — using `references/paging.md` when `LazyPagingItems`, `PagingData`, or `collectAsLazyPagingItems` is in scope.
 15. Final **Kotlin style** pass using `references/kotlin.md`.
 
 If doing a partial review, load only the relevant reference files — each references file is designed to be read in isolation.
