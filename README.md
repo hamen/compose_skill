@@ -125,21 +125,29 @@ This is the preferred path for Codex, Claude Code, Cursor, and multi-agent setup
 
 ### Claude Code plugin install
 
-Direct plugin install still works if you prefer Claude Code's plugin flow:
+Add this repository as a plugin marketplace, then install either plugin from it.
 
-```
-/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
+From inside an interactive Claude Code session:
+
+```text
+/plugin marketplace add hamen/compose_skill
+/plugin install compose-agent@compose_skill
+/plugin install jetpack-compose-audit@compose_skill
 ```
 
-Claude Code reads `skills/jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md`. For `compose-agent`, use:
+Or from your shell:
 
+```bash
+claude plugin marketplace add hamen/compose_skill
+claude plugin install compose-agent@compose_skill
+claude plugin install jetpack-compose-audit@compose_skill
 ```
-/plugin add hamen/compose_skill --subdir skills/compose-agent
-```
+
+The root `.claude-plugin/marketplace.json` points each plugin at its `skills/<name>` subdir, where Claude Code reads `.claude-plugin/plugin.json` and registers `SKILL.md`.
 
 ### Breaking migration
 
-If you installed an older release with `--subdir compose-agent`, `--subdir jetpack-compose-audit`, or the nested `skills/<plugin>/skills/<name>` manual symlink, `/plugin update` will keep pointing at the old path. Remove that old install once and reinstall with the commands above.
+There is no `claude plugin add … --subdir` command — that form (documented in older releases) never worked. If you tried it, or installed via the nested `skills/<plugin>/skills/<name>` manual symlink, reinstall with the marketplace commands above.
 
 ### Manual symlink
 
@@ -287,8 +295,9 @@ npx --yes skills add hamen/compose_skill --skill compose-agent -y
 
 **Claude Code:**
 
-```
-/plugin add hamen/compose_skill --subdir skills/compose-agent
+```text
+/plugin marketplace add hamen/compose_skill
+/plugin install compose-agent@compose_skill
 ```
 
 **Cursor:** import the repo as a plugin and pick `compose-agent` in the subdirectory selector.
