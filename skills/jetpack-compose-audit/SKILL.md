@@ -231,6 +231,7 @@ Focus on:
 - cleanup correctness
 - lifecycle-aware effect behavior
 - animations driven from `LaunchedEffect(target)` for target-driven state changes (not from the composition body; `rememberCoroutineScope().launch { animateTo(...) }` is usually for event- or gesture-driven animation)
+- paging `LazyPagingItems.refresh()` / `retry()` called from composition or `LaunchedEffect(Unit)` to "load on enter" — initial load is `PagingData`'s job; these are user-initiated only
 
 #### Composable API Quality
 
@@ -314,6 +315,7 @@ Include:
 - one-line judgment for each category, with the applied ceiling if any (e.g. "Performance 8/10 — capped by the SSM-on table: recreated `FeedItemUiModel` params")
 - when animation defects affected Performance, name them explicitly in the Performance line (e.g. "Performance 6/10 — animated `offset` reads recompose `DrawerContent` every frame")
 - when animation defects affected Side Effects, name them explicitly in the Side Effects line (e.g. "Side Effects 5/10 — `scope.launch { animateTo(...) }` in composition on `SettingsScreen`")
+- when paging defects affected Side Effects, name them explicitly in the Side Effects line (e.g. "Side Effects 6/10 — `LaunchedEffect(Unit) { feed.refresh() }` on `FeedScreen` loads from composition")
 - compiler-report highlights when Step 4 succeeded: Strong Skipping on/off (or mixed across modules), which ceiling table was applied, module-wide `skippable%`, named-only `skippable%`, which metric actually bound the cap, count of unstable shared types, and any module that failed to build
 - **top three actionable fixes**, each with:
   - the concrete change ("add `key = { it.id }` to `items(...)` in `feed/FeedList.kt:42`")

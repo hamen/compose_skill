@@ -2,7 +2,7 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
-### 4.2.0 — 2026-06-17
+### 4.2.0 — 2026-06-17 (release candidate — convergence testing before GA tag)
 
 **Paging 3 in Compose — guardrails for paged lazy lists.**
 

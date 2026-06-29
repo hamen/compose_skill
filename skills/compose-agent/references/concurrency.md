@@ -4,7 +4,7 @@ The Coroutines / Flow model is Android's first-class async primitive. Compose si
 
 ## Collecting Flows In UI
 
-**Always use `collectAsStateWithLifecycle()`** for Flows that drive UI.
+**Always use `collectAsStateWithLifecycle()`** for Flows that drive UI — **except `Flow<PagingData<T>>`**, which is collected with `collectAsLazyPagingItems()` and must not be routed through `collectAsStateWithLifecycle()`. See `paging.md`.
 
 ```kotlin
 // Wrong

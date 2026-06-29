@@ -133,6 +133,11 @@ Use this section for concrete, user-visible problems the audit intentionally tra
 - Status: [clean / risky / not present / not inspected]
 - If risky, name the Side Effects issue explicitly: `Animatable.animateTo()` from composition, `rememberCoroutineScope().launch { animateTo(...) }` reacting to state instead of `LaunchedEffect(target)`, or `Animatable` + `LaunchedEffect` where `animate*AsState` / `updateTransition` would suffice.
 
+**Paging side-effect signals**
+
+- Status: [clean / risky / not present / not inspected]
+- If risky, name the Side Effects issue explicitly: `LazyPagingItems.refresh()` / `retry()` called unconditionally from composition or `LaunchedEffect(Unit)` to "load on enter" (initial load is `PagingData`'s job; `refresh()`/`retry()` are user-initiated). Keep missing keys / `LoadState` handling in Performance / State instead.
+
 **Evidence**
 
 - `path/to/file1.kt:LL` — [brief reason] · References: <https://developer.android.com/...>

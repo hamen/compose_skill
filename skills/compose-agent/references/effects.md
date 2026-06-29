@@ -259,6 +259,7 @@ For value-based animations (`animate*AsState`), no effect is needed at all — t
 - **State mutation in a `@Composable` function body outside `remember`/`mutableStateOf`.** The read–write cycle causes invalidation storms ("backwards writes").
 - **Using `LaunchedEffect` where `collectAsStateWithLifecycle` suffices.** If the goal is "show this flow as state", do not open the flow manually.
 - **Nesting effects.** A `LaunchedEffect` inside another `LaunchedEffect` is almost always a sign the outer effect should have had different keys.
+- **Calling `LazyPagingItems.refresh()` / `retry()` from composition or `LaunchedEffect(Unit)`** to "load on enter." Initial load is `PagingData`'s job; these are user-initiated only. See `paging.md`.
 
 ## Primary Sources
 

@@ -48,7 +48,7 @@ If doing a partial review, load only the relevant reference files — each refer
 - Every composable that takes a `Modifier` names the parameter `modifier`, types it `Modifier = Modifier`, and applies it **to the outermost layout only**. Never create a `modifier` parameter you do not forward.
 - Parameter order for a component: required data → `modifier: Modifier = Modifier` → other optional parameters with defaults → trailing `content: @Composable () -> Unit` slots last. One `modifier` parameter per component.
 - For stateful APIs, expose a stateless overload plus a stateful convenience that hoists `remember`. See `references/component-api.md`.
-- Collect Flows with `collectAsStateWithLifecycle()` in UI code. Plain `collectAsState()` keeps collecting when the screen is not visible and burns battery and bandwidth.
+- Collect Flows with `collectAsStateWithLifecycle()` in UI code. Plain `collectAsState()` keeps collecting when the screen is not visible and burns battery and bandwidth. **Exception:** `Flow<PagingData<T>>` is collected with `collectAsLazyPagingItems()`, never `collectAsStateWithLifecycle()` — see `references/paging.md`.
 - Prefer `rememberSaveable` over `remember` for UI state that should survive configuration change or process death, unless the value is unserializable or derivable.
 - Use the typed state factories (`mutableIntStateOf`, `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`) for primitive state. Raw `mutableStateOf<Int>(...)` boxes.
 - Never put a lambda in a `CompositionLocal`. Use explicit parameters.
@@ -138,7 +138,7 @@ When the agent is **writing new code** rather than reviewing, the same rules app
 - Is state hoisted, or is there a clear reason to own it here?
 - If it renders a list, does it use a stable `key =`?
 - If it launches work, is that work in a `LaunchedEffect`, `produceState`, or the ViewModel — not in the composition body?
-- If it collects a Flow, is it `collectAsStateWithLifecycle()`?
+- If it collects a Flow, is it `collectAsStateWithLifecycle()`? (A `Flow<PagingData<T>>` is the exception — it uses `collectAsLazyPagingItems()`.)
 - Is the parameter order: data → modifier → other → content slot last?
 - If it animates, is the API declarative first, remembered where needed, lifecycle-aware, and phase-correct?
 - If it pages, are keys stable, `LoadState` handled, and refresh/retry user-driven?

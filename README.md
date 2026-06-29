@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="./bin/ci"><img alt="bin/ci passing" src="https://img.shields.io/badge/bin%2Fci-passing-2ea043"></a>
-  <a href="https://github.com/hamen/compose_skill/releases/tag/v4.2.0"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
+  <a href="https://github.com/hamen/compose_skill/releases"><img alt="Release" src="https://img.shields.io/github/v/release/hamen/compose_skill?color=2f80ed&label=release"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/hamen/compose_skill?color=0a7f60"></a>
   <img alt="Skills" src="https://img.shields.io/badge/skills-2-7c3aed">
   <img alt="Compose animation ready" src="https://img.shields.io/badge/Compose-animation%20ready-f97316">

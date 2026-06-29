@@ -1,6 +1,6 @@
 # Paging
 
-Paging 3 in Compose is not "a lazy list that loads more." It is a **windowed, append-only stream** with load states, refresh semantics, and key rules of its own. LLMs treat `LazyPagingItems` like `List<Item>` and reproduce the same three production bugs:
+Paging 3 in Compose is not "a lazy list that loads more." It is a **windowed paged stream** (primarily append, with prepend and refresh generations) carrying load states, refresh semantics, and key rules of its own. LLMs treat `LazyPagingItems` like `List<Item>` and reproduce the same three production bugs:
 
 1. **Missing or index-only keys** on a paginated stream
 2. **Ignored `LoadState`** — blank screens, stuck spinners, silent errors
@@ -99,7 +99,7 @@ ViewModel guardrail: expose `Flow<PagingData<Post>>` built once and **`cachedIn(
 
 ## Keys — Stable Domain Identity, Not Index
 
-The supported integration is **`items(count = lazyPagingItems.itemCount, key = lazyPagingItems.itemKey { … })`**. The older `items(lazyPagingItems)` overload on `LazyListScope` is **deprecated** — use `itemKey` with the standard lazy `items(count, key, …)` API instead (works for `LazyColumn`, `LazyVerticalGrid`, `HorizontalPager`, etc.).
+The supported integration is **`items(count = lazyPagingItems.itemCount, key = lazyPagingItems.itemKey { … })`**. The older `items(lazyPagingItems)` overload on `LazyListScope` is **deprecated** — use `itemKey` with the standard lazy `items(count, key, …)` API instead (`LazyColumn`, `LazyVerticalGrid`, and friends). For a `HorizontalPager`/`VerticalPager` driven by `LazyPagingItems`, the wiring differs — pass `pageCount = { lazyPagingItems.itemCount }` and read with `lazyPagingItems[page]`, supplying a stable `key` — so don't assume the `items(count, key)` shape transfers verbatim.
 
 ```kotlin
 // LLM-generated — index keys break on prepend / refresh / reorder
@@ -147,7 +147,7 @@ Rules:
 
 Use **`retry()`** after `LoadState.Error`. Wire **`refresh()`** to pull-to-refresh or explicit reload actions only.
 
-**DB-backed / `RemoteMediator` feeds:** `loadState.refresh` reflects the *mediator* state, so it can flip to `NotLoading` before the cached page is actually emitted — a brief blank flash. When the feed is backed by a local cache (Room), branch on **`loadState.source.refresh`** for the local-load signal (and `loadState.mediator?.refresh` for the network one) instead of the combined `loadState.refresh`. This reference is UI guidance, not a `RemoteMediator` cookbook — just know which signal to read.
+**DB-backed / `RemoteMediator` feeds:** keep branching on the **combined `loadState.refresh`** for normal screen loading — it already defers to the mediator and only reports `NotLoading` once **both** `source` and `mediator` have settled, so it will not blank the screen early. Reach for `loadState.source.refresh` / `loadState.mediator?.refresh` **only** when you deliberately render cached content while a network refresh continues in the background (explicit cache-vs-network UI). Branching on `source.refresh` for the default load is a tell — it shows an empty state while the mediator is still fetching. This reference is UI guidance, not a `RemoteMediator` cookbook.
 
 **`prepend`** usually needs no UI of its own (bidirectional feeds are rare); when it does, mirror the `append` pattern — a header spinner on `prepend is Loading`, a header retry on `prepend is Error`. Do not invent a separate loading flag for it.
 
