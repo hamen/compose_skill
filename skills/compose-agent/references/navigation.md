@@ -2,6 +2,28 @@
 
 Use Navigation 3 for new code. For projects still on Navigation 2, use the type-safe destinations that landed in `2.8`. **Do not write new code against string routes.**
 
+## Decision Table
+
+Start here. Pick the row that matches the situation, then read the matching section below.
+
+| You are doing… | Use |
+|---|---|
+| New multi-screen app, you own the back stack as state | Navigation 3 (`androidx.navigation3`) + `NavDisplay` |
+| One screen with internal modes (wizard steps, tabs, expand/collapse) | plain state (`var step by rememberSaveable { … }`) — **no nav library** |
+| Existing Nav2 codebase you cannot migrate yet | Nav2 type-safe destinations (`composable<T>`, `2.8+`) |
+| New screen on a Nav2 project mid-migration | still Nav2 type-safe — convert one graph at a time, **never** string routes |
+| Adaptive layout: list + detail side-by-side on large screens, stacked on phones | Nav3 `ListDetailSceneStrategy` |
+| Default one-screen-at-a-time presentation | Nav3 `SinglePaneSceneStrategy` (the default) |
+| Passing an argument to a destination | a field on the `@Serializable` `NavKey` data class — never interpolate a string |
+| Navigating in response to a ViewModel result | expose `Flow<NavEvent>`, collect in a route `LaunchedEffect` — **never** inject `backStack` |
+| Scoping a `viewModel()` to one entry | `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator |
+| Intercepting back (unsaved-changes guard) | `BackHandler` on that screen only — otherwise rely on `NavDisplay`'s `onBack` |
+| Entering from a deep link | resolve the intent to a destination key and push it; the destination must be self-sufficient |
+
+**LLM tell:** reaching for `NavController` / `NavHost` / `navigate(route)` in new Nav3 code, or pulling in a navigation library for a single screen whose "navigation" is really internal state. Nav3 owns the back stack as plain state; a self-contained screen needs no library at all.
+
+<https://developer.android.com/guide/navigation/navigation-3>
+
 ## Navigation 3 — The Model
 
 Navigation 3 (`androidx.navigation3`) flips the model. Instead of a framework-owned nav graph with routes and arguments, you own the back stack as plain state:
