@@ -21,7 +21,7 @@ Start here. Pick the row that matches the situation, then read the matching sect
 | Passing a result back from another screen (Nav3) | the `ResultEventBus` (`rememberResultEventBusNavEntryDecorator()`); consume as state (`conflateAsState`) or as a one-shot (`ResultEffect { … }`) |
 | **Nav3:** scoping a `viewModel()` to one entry | `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator (Nav2 already scopes `viewModel()` to the `NavBackStackEntry` — do not add this there) |
 | Intercepting back (unsaved-changes guard) | `BackHandler` on that screen only — otherwise rely on the default nav-host back handling (`NavDisplay.onBack` for Nav3 / `NavHost` for Nav2) |
-| Entering from a deep link | **Nav3:** resolve the intent to a destination key and push it onto the back stack; the destination must be self-sufficient. **Nav2:** `navDeepLink { … }` (see "Deep Links" below) |
+| Entering from a deep link | **Nav3:** resolve the intent to a destination key, then seed it as the start key (or push it for a new intent); the destination must be self-sufficient. **Nav2:** `navDeepLink { … }` (see "Deep Links" below) |
 
 **LLM tell:** reaching for `NavController` / `NavHost` / `navigate(route)` in new Nav3 code, or pulling in a navigation library for a single screen whose "navigation" is really internal state. Nav3 owns the back stack as plain state; a self-contained screen needs no library at all.
 
@@ -38,7 +38,7 @@ Navigation 3 (`androidx.navigation3`) flips the model. Instead of a framework-ow
 
 @Composable
 fun App() {
-    val backStack = rememberNavBackStack<NavKey>(Home)
+    val backStack = rememberNavBackStack(Home)  // vararg of NavKey; no type argument
 
     NavDisplay(
         backStack = backStack,
@@ -73,8 +73,9 @@ Core shifts from Nav2:
 - Always declare destinations as top-level `@Serializable` types. Inline anonymous keys break `rememberSaveable` and process death restore.
 - Pass domain values as **fields of the destination**, not captured by callbacks. Captured values lose process-death safety.
 - Do not put `@Composable` functions or lambdas inside destination data. Destinations must be serializable.
-- **The back stack is mutated in the UI, never in a ViewModel.** For navigation triggered by a ViewModel, the route observes the VM's state and calls `backStack.add` / `removeLastOrNull` itself — do **not** inject `backStack` into the ViewModel. (For outcomes that must survive process death, `flows.md` prefers modeling them as state rather than a lossy one-shot event — a preference, applied at the UI's observation point.)
-- To hand a **result** back from a child screen, Nav3 provides a `ResultEventBus`: add `rememberResultEventBusNavEntryDecorator()` to `entryDecorators`, call `LocalResultEventBus.current.sendResult(value)` on the producer, and consume it on the target either as state (`LocalResultEventBus.current.conflateAsState(...)`) or as a one-shot (`ResultEffect<T> { … }`). Both forms are official; pick state when the result must not be lost.
+- `rememberNavBackStack(...)` takes a **`vararg` of `NavKey`** and returns `NavBackStack<NavKey>` — it is **not** generic. Call it `rememberNavBackStack(Home)`, never `rememberNavBackStack<NavKey>(Home)` (that does not compile). If you genuinely need `NavBackStack<MyKey>`, write your own thin wrapper; the library overload is `NavKey`-typed.
+- **Don't make a feature/screen ViewModel own or mutate the back stack.** Navigation triggered by a ViewModel should flow the other way: the route observes the VM's state and calls `backStack.add` / `removeLastOrNull` itself — do not inject `backStack` into a screen VM as a navigate-command surface. (A dedicated app-level navigation holder that *owns* the stack — like the recipes' `Navigator` / `NavigationState` — is a separate, legitimate pattern; the save-state doc also covers persisting a back stack from such a holder.)
+- To hand a **result** back from a child screen, Nav3 provides a `ResultEventBus`: add `rememberResultEventBusNavEntryDecorator()` to `entryDecorators`, call `LocalResultEventBus.current.sendResult(value)` on the producer, and consume it on the target either as state (`LocalResultEventBus.current.conflateAsState(...)`) or as a one-shot (`ResultEffect<T> { … }`). Both forms are official. Note the `conflateAsState` value is the latest result **within the current navigation lifetime — it is not retained across process death**; for an outcome that must survive that, persist it in a state holder (`flows.md`).
 - Wrap navigation triggered by a tap in `dropUnlessResumed { backStack.add(...) }` (from `androidx.lifecycle.compose`) so a queued click cannot navigate from a screen that has already left `RESUMED` — every official recipe does this.
 - If an entry calls `viewModel()` and you want it scoped to that `NavEntry`, add `rememberViewModelStoreNavEntryDecorator()` (from `androidx.lifecycle.viewmodel.navigation3`) to `entryDecorators` — and include the default `rememberSaveableStateHolderNavEntryDecorator()` alongside it, since supplying `entryDecorators` replaces the defaults.
 - Use `entryProvider { entry<Key> { … } }` to map destination type → composable. Each entry accepts the key so you can read its fields.
