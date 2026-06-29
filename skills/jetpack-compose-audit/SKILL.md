@@ -350,7 +350,7 @@ For medium or large repositories:
 - Do not inflate the performance score just because the app uses Compose.
 - Do not over-penalize isolated experiments or sample files unless they are part of production paths.
 - Do not score design in v1.
-- Do not flag `LaunchedEffect(Unit)` or `LaunchedEffect(true)` on its own — the "run once" pattern is idiomatic. Only flag it when the body captures a value that may change without `rememberUpdatedState`.
+- Do not flag `LaunchedEffect(Unit)` or `LaunchedEffect(true)` on its own — the "run once" pattern is idiomatic. Only flag it when the body captures a value that may change without `rememberUpdatedState`. **Paging carve-out:** `LaunchedEffect(Unit) { lazyPagingItems.refresh() }` (or `retry()`) *is* a Side Effects defect — initial paged load is `PagingData`'s job, and `refresh()`/`retry()` are user-initiated. Flag it.
 - Do not deduct on Compose Multiplatform code paths for Android-only APIs (`collectAsStateWithLifecycle`, `lifecycle-runtime-compose`). Note the platform constraint as a tradeoff instead.
 - Do not double-count the same root cause across categories. A stability problem typically surfaces in both Performance and State — pick the dominant category and cross-reference.
 

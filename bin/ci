@@ -151,9 +151,10 @@ if (
   !auditDocs.includes('Paging list correctness') ||
   !auditDocs.includes('Paging load-state handling') ||
   !auditDocs.includes('Paging list signals') ||
-  !auditDocs.includes('Paging load-state signals')
+  !auditDocs.includes('Paging load-state signals') ||
+  !auditDocs.includes('Paging side-effect signals')
 ) {
-  throw new Error('jetpack-compose-audit docs must surface paging findings in Performance and State report sections');
+  throw new Error('jetpack-compose-audit docs must surface paging findings in Performance, State, and Side Effects report sections');
 }
 
 const auditSkill = readFileSync('skills/jetpack-compose-audit/SKILL.md', 'utf8');

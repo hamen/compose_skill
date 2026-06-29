@@ -269,6 +269,8 @@ Deduct for:
 - `Animatable.animateTo(...)` invoked from the composition body (not from inside an effect) — runs on every recomposition and never cancels → [animation](https://developer.android.com/develop/ui/compose/animation/value-based), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 - unconditional `lazyPagingItems.refresh()` / `retry()` from the composable body or bare `LaunchedEffect(Unit)` without a documented one-shot reason — initial load belongs to `PagingData`; refresh is user-driven → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 
+When this paging rule affects the Side Effects score, name it in the Side Effects section as **Paging side-effect signals** rather than folding it into a generic effect note — mirroring **Paging list correctness** (Performance) and **Paging load-state handling** (State).
+
 Suggested interpretation:
 
 - `9-10`: deliberate, lifecycle-aware effect usage

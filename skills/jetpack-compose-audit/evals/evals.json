@@ -142,6 +142,7 @@
       "files": [],
       "expectations": [
         "Flag `items.refresh()` in `LaunchedEffect(Unit)`: initial load is `PagingData`'s job; `refresh()` is for user-initiated reload.",
+        "Classify the composition-time `refresh()` under Side Effects (paging side-effect signal), not Performance or State.",
         "Flag the `refresh is LoadState.Error` branch with no `itemCount` guard — a transient failure replaces an already-loaded feed with a full-screen error.",
         "Recommend gating full-screen error on `itemCount == 0` and surfacing refresh errors that arrive with content as a snackbar / inline retry.",
         "Credit the correct stable `itemKey` already present instead of re-flagging it."

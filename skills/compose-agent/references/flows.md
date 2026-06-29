@@ -36,7 +36,7 @@ fun FeedScreen(viewModel: FeedViewModel) {
 
 **Two questions, separate answers:**
 
-- **Where do you collect?** A screen-boundary `collectAsStateWithLifecycle()` (or a keyed `LaunchedEffect(flow) { flow.collect { ... } }` for events) is fine. Collection happens at the UI edge.
+- **Where do you collect?** A screen-boundary `collectAsStateWithLifecycle()` (or a keyed `LaunchedEffect(flow) { flow.collect { ... } }` for events) is fine. Collection happens at the UI edge. **Exception:** a `Flow<PagingData<T>>` is collected with `collectAsLazyPagingItems()`, never `collectAsStateWithLifecycle()` — see `paging.md`.
 - **Where do you shape?** Operators (`combine`, `flatMapLatest`, `stateIn`, `debounce`, `retry`, etc.) belong in a presenter / state holder / ViewModel — **not** in a composable. The data layer hands the UI a single coherent stream.
 
 **LLM tells:**

@@ -53,7 +53,9 @@ fun FeedScreen(viewModel: FeedViewModel) {
             // itemCount > 0: keep the list. A failed pull-to-refresh surfaces as a
             // transient message, not a full-screen replacement.
             val refreshState = lazyPagingItems.loadState.refresh
-            LaunchedEffect(refreshState) {
+            // Key on the Error itself (or a flag), not the whole loadState, so the
+            // snackbar fires once per failure and does not re-show on unrelated state churn.
+            LaunchedEffect(refreshState is LoadState.Error) {
                 if (refreshState is LoadState.Error) {
                     // snackbarHostState.showSnackbar(...) with a Retry action -> lazyPagingItems.retry()
                 }

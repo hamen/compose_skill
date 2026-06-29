@@ -217,8 +217,10 @@ When `collectAsLazyPagingItems` / `LazyPagingItems` is present, paging-specific 
    - the append branch handles **`LoadState.Error`** with a `retry()` footer, not only `LoadState.Loading`
    - a full-screen `refresh is LoadState.Error` branch is **guarded by `itemCount == 0`** — otherwise a transient pull-to-refresh failure wipes an already-loaded feed
    - no **`lazyPagingItems[index]!!`** — null slots occur when `PagingConfig.enablePlaceholders = true`; check the null handling matches the config
-3. When keys are missing or index-based on a paginated feed, flag under Performance as **Paging list correctness** and recommend `compose-agent focus on paging`.
+   - no **`itemSnapshotList`** wired as the primary list source — it materializes the differ and defeats paging; treat as a list-correctness smell
+3. When keys are missing or index-based on a paginated feed, or `itemSnapshotList` drives the primary UI, flag under Performance as **Paging list correctness** and recommend `compose-agent focus on paging`.
 4. When `LoadState.Error` is ignored or loading never resolves, flag under State management as **Paging load-state handling**.
+5. When `refresh()` / `retry()` is invoked from composition or a bare `LaunchedEffect(Unit)`, flag under Side Effects as **Paging side-effect signals** (initial load is `PagingData`'s job; these are user-initiated).
 
 Positive signals to reward:
 
@@ -375,7 +377,7 @@ Positive signals to reward:
 - **strictly forbidden IO in a composable body** — serialization, network, database, file/directory IO, or subprocess work. `remember` is **not** a valid fix: the cached body still runs on the composition thread on first composition and on every key change. Threading-aware image loaders (Coil's `AsyncImage` / `rememberAsyncImagePainter`, Glide's Compose API) are the explicit carve-out
 - navigation, snackbar, analytics, or repository calls triggered during composition instead of from an effect or event path
 - `navController.navigate(...)` invoked in composition body — must come from an event handler or `LaunchedEffect`
-- `LaunchedEffect(Unit)` / `LaunchedEffect(true)` is **not** suspicious on its own (the "run once" pattern is idiomatic). Only flag it when the body captures parameter or state values that may change without `rememberUpdatedState`
+- `LaunchedEffect(Unit)` / `LaunchedEffect(true)` is **not** suspicious on its own (the "run once" pattern is idiomatic). Only flag it when the body captures parameter or state values that may change without `rememberUpdatedState` — **except** `LaunchedEffect(Unit) { lazyPagingItems.refresh() / retry() }`, which is a Side Effects defect (paged initial load is `PagingData`'s job; `refresh()`/`retry()` are user-initiated)
 - `DisposableEffect` with empty or suspicious cleanup
 - listener/observer registration without `onDispose`
 - effect keys too broad or too narrow
