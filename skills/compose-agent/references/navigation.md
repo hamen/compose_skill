@@ -129,7 +129,8 @@ In both cases, the destination must be **self-sufficient** when entered from a d
 
 ## Primary Sources
 
-- `https://developer.android.com/guide/navigation/navigation-3` — Navigation 3 overview
-- `https://developer.android.com/guide/navigation/navigation-3/scenes` — scene strategies
+- `https://developer.android.com/guide/navigation/navigation-3/basics` — Nav3 basics (`NavDisplay`, `entryProvider`, back stack as state)
+- `https://developer.android.com/guide/navigation/navigation-3/save-state` — `rememberNavBackStack`, `NavKey` + `@Serializable`, the `rememberSaveableStateHolderNavEntryDecorator` / `rememberViewModelStoreNavEntryDecorator` decorators
+- `https://developer.android.com/guide/navigation/navigation-3/scenes` — scene strategies (`SinglePaneSceneStrategy`, `ListDetailSceneStrategy`); they group entries by window size, they do not register deep links
 - `https://developer.android.com/guide/navigation/use-graph/navigate#type-safe` — Nav2 type-safe destinations
 - `https://developer.android.com/develop/ui/compose/navigation` — Compose + Nav2
