@@ -149,11 +149,20 @@ The root `.claude-plugin/marketplace.json` points each plugin at its `skills/<na
 
 The supported Claude Code flow is the `marketplace add` + `install` commands above. Note the `claude plugin` **CLI** has no `add` subcommand, so the shell form `claude plugin add … --subdir` does not work — use the marketplace commands instead.
 
-If you previously installed via an older `--subdir` path or the nested `skills/<plugin>/skills/<name>` manual symlink, **uninstall the old plugin first** (otherwise `/plugin update` keeps pointing at the stale path), then reinstall with the marketplace commands above:
+If you previously installed via an older `--subdir` path or the nested `skills/<plugin>/skills/<name>` manual symlink, **uninstall the old plugin first** (otherwise `/plugin update` keeps pointing at the stale path), then reinstall with the marketplace commands above.
+
+From a Claude Code session:
 
 ```text
-/plugin uninstall compose-agent
-/plugin uninstall jetpack-compose-audit
+/plugin uninstall compose-agent@compose_skill
+/plugin uninstall jetpack-compose-audit@compose_skill
+```
+
+Or from your shell:
+
+```bash
+claude plugin uninstall compose-agent@compose_skill
+claude plugin uninstall jetpack-compose-audit@compose_skill
 ```
 
 ### Manual symlink
