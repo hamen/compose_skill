@@ -151,19 +151,20 @@ The supported Claude Code flow is the `marketplace add` + `install` commands abo
 
 If you previously installed via an older `--subdir` path or the nested `skills/<plugin>/skills/<name>` manual symlink, **uninstall the old plugin first** (otherwise `/plugin update` keeps pointing at the stale path), then reinstall with the marketplace commands above.
 
-From a Claude Code session:
+First list what you have — a legacy install may appear under a different id than `@compose_skill`:
+
+```text
+/plugin list
+```
+
+Then uninstall whatever old entry it shows (use the exact id from the list), e.g.:
 
 ```text
 /plugin uninstall compose-agent@compose_skill
 /plugin uninstall jetpack-compose-audit@compose_skill
 ```
 
-Or from your shell:
-
-```bash
-claude plugin uninstall compose-agent@compose_skill
-claude plugin uninstall jetpack-compose-audit@compose_skill
-```
+The same commands work from your shell as `claude plugin list` and `claude plugin uninstall <id>`.
 
 ### Manual symlink
 
