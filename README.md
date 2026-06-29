@@ -125,21 +125,46 @@ This is the preferred path for Codex, Claude Code, Cursor, and multi-agent setup
 
 ### Claude Code plugin install
 
-Direct plugin install still works if you prefer Claude Code's plugin flow:
+Add this repository as a plugin marketplace, then install either plugin from it.
 
-```
-/plugin add hamen/compose_skill --subdir skills/jetpack-compose-audit
+From inside an interactive Claude Code session:
+
+```text
+/plugin marketplace add hamen/compose_skill
+/plugin install compose-agent@compose_skill
+/plugin install jetpack-compose-audit@compose_skill
 ```
 
-Claude Code reads `skills/jetpack-compose-audit/.claude-plugin/plugin.json` and registers `skills/jetpack-compose-audit/SKILL.md`. For `compose-agent`, use:
+Or from your shell:
 
+```bash
+claude plugin marketplace add hamen/compose_skill
+claude plugin install compose-agent@compose_skill
+claude plugin install jetpack-compose-audit@compose_skill
 ```
-/plugin add hamen/compose_skill --subdir skills/compose-agent
-```
+
+The root `.claude-plugin/marketplace.json` points each plugin at its `skills/<name>` subdir, where Claude Code reads `.claude-plugin/plugin.json` and registers `SKILL.md`.
 
 ### Breaking migration
 
-If you installed an older release with `--subdir compose-agent`, `--subdir jetpack-compose-audit`, or the nested `skills/<plugin>/skills/<name>` manual symlink, `/plugin update` will keep pointing at the old path. Remove that old install once and reinstall with the commands above.
+The supported Claude Code flow is the `marketplace add` + `install` commands above. Note the `claude plugin` **CLI** has no `add` subcommand, so the shell form `claude plugin add … --subdir` does not work — use the marketplace commands instead.
+
+If you previously installed via an older `--subdir` path or the nested `skills/<plugin>/skills/<name>` manual symlink, **uninstall the old plugin first** (otherwise `/plugin update` keeps pointing at the stale path), then reinstall with the marketplace commands above.
+
+First list what you have — a legacy install may appear under a different id than `@compose_skill`:
+
+```text
+/plugin list
+```
+
+Then uninstall whatever old entry it shows (use the exact id from the list), e.g.:
+
+```text
+/plugin uninstall compose-agent@compose_skill
+/plugin uninstall jetpack-compose-audit@compose_skill
+```
+
+The same commands work from your shell as `claude plugin list` and `claude plugin uninstall <id>`.
 
 ### Manual symlink
 
@@ -287,8 +312,9 @@ npx --yes skills add hamen/compose_skill --skill compose-agent -y
 
 **Claude Code:**
 
-```
-/plugin add hamen/compose_skill --subdir skills/compose-agent
+```text
+/plugin marketplace add hamen/compose_skill
+/plugin install compose-agent@compose_skill
 ```
 
 **Cursor:** import the repo as a plugin and pick `compose-agent` in the subdirectory selector.
