@@ -13,6 +13,8 @@
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
+**`compose-agent` 4.2.1 · 2026-06-29** — Navigation 3 "when to use" decision table in `navigation.md` (workflow entry point: Nav3 vs Nav2 type-safe vs plain state, adaptive scene strategies, ViewModel-driven nav as durable state). `jetpack-compose-audit` stays at `4.2.0`.
+
 **Version 4.2.0 · 2026-06-17 (release candidate — convergence testing before GA tag)** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Multi-agent convergence testing planned before GA tag. Both skills ship as `4.2.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
@@ -26,6 +28,13 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.2.1 — 2026-06-29
+
+**`compose-agent` — Navigation 3 decision table.**
+
+- **Workflow entry point.** A "when to use" decision table at the top of [`navigation.md`](./skills/compose-agent/references/navigation.md): Nav3 vs Nav2 type-safe vs plain state, argument passing, ViewModel-driven navigation as durable state, per-entry `ViewModel` scope, `BackHandler`, deep links, and `ListDetailSceneStrategy` vs `SinglePaneSceneStrategy`. Mirrors the `paging.md` pattern. From [android/skills#50](https://github.com/android/skills/issues/50).
+- **Versions.** `compose-agent` → `4.2.1`. `jetpack-compose-audit` unchanged at `4.2.0`.
 
 ### 4.2.0 — 2026-06-17
 
