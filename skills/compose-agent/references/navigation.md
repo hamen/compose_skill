@@ -12,13 +12,13 @@ Start here. Pick the row that matches the situation, then read the matching sect
 | One screen with internal modes (wizard steps, in-screen tabs, expand/collapse) | plain state (`var step by rememberSaveable { … }`) — **no nav library**. (Bottom-nav with a separate back stack per tab is multi-destination → Nav3, not this row.) |
 | Existing Nav2 codebase you cannot migrate yet | Nav2 type-safe destinations (`composable<T>`, `2.8+`) |
 | New screen on a Nav2 project mid-migration | still Nav2 type-safe — convert one graph at a time, **never** string routes |
-| Adaptive layout: list + detail side-by-side on large screens, stacked on phones | Nav3 `ListDetailSceneStrategy` |
-| Default one-screen-at-a-time presentation | Nav3 `SinglePaneSceneStrategy` (the default) |
-| Passing an argument to a destination | a field on the `@Serializable` `NavKey` data class — never interpolate a string. (Nav2 type-safe: fields on the `@Serializable` destination, read via `toRoute()`.) |
-| Navigating in response to a ViewModel result | model the pending navigation as **durable UI state** the route observes and clears after it navigates (per `flows.md`) — **never** inject `backStack` into the ViewModel |
-| Scoping a `viewModel()` to one entry | `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator |
+| **Nav3:** adaptive layout, list + detail side-by-side on large screens, stacked on phones | `ListDetailSceneStrategy` |
+| **Nav3:** default one-screen-at-a-time presentation | `SinglePaneSceneStrategy` (the default) |
+| Passing an argument to a destination | **Nav3:** a field on the `@Serializable` `NavKey` data class — never interpolate a string. **Nav2 type-safe:** fields on the `@Serializable` destination, read via `toRoute()` |
+| Navigating in response to a ViewModel result | model the pending navigation as **durable UI state** the route observes and clears after it navigates (per `flows.md`) — **never** inject the `backStack` (Nav3) / `navController` (Nav2) into the ViewModel |
+| **Nav3:** scoping a `viewModel()` to one entry | `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator (Nav2 already scopes `viewModel()` to the `NavBackStackEntry` — do not add this there) |
 | Intercepting back (unsaved-changes guard) | `BackHandler` on that screen only — otherwise rely on the default nav-host back handling (`NavDisplay.onBack` for Nav3 / `NavHost` for Nav2) |
-| Entering from a deep link (Nav3) | resolve the intent to a destination key and push it (or register on the entry via a scene strategy); the destination must be self-sufficient. (Nav2 → `navDeepLink { … }`; see "Deep Links" below.) |
+| Entering from a deep link | **Nav3:** resolve the intent to a destination key and push it onto the back stack; the destination must be self-sufficient. **Nav2:** `navDeepLink { … }` (see "Deep Links" below) |
 
 **LLM tell:** reaching for `NavController` / `NavHost` / `navigate(route)` in new Nav3 code, or pulling in a navigation library for a single screen whose "navigation" is really internal state. Nav3 owns the back stack as plain state; a self-contained screen needs no library at all.
 
@@ -110,14 +110,14 @@ Guardrails:
 ## Common Mistakes
 
 - **Navigating inside a composition.** Call sites should be callbacks wired to events, not computed during composition. `onClick = { navController.navigate(...) }` is right. Calling `navController.navigate(...)` in the composable body is wrong and will fire on every recomposition.
-- **Capturing the `navController` (Nav2) or `backStack` (Nav3) in a ViewModel.** Navigation is a UI concern; keep the controller / back stack in the UI layer. Expose the pending navigation as observable UI state (cleared after the route navigates), per `flows.md` — not a lossy one-shot event.
+- **Capturing the `navController` (Nav2) or `backStack` (Nav3) in a ViewModel.** Navigation is a UI concern; keep the controller / back stack in the UI layer. Expose the pending navigation as observable UI state (cleared after the route navigates), per `flows.md` — not a lossy one-shot event. (A `Channel<NavEvent>` is acceptable only for genuinely ephemeral, drop-tolerant signals, as `concurrency.md` notes.)
 - **Using `BackHandler` everywhere.** Only use it when the screen genuinely needs to intercept back (confirm unsaved changes, close a search field). Otherwise the framework's back handling is fine.
-- **Hoisting nav state through multiple layers.** Pass `onXxx` callbacks — not the `NavController` — to child composables.
+- **Hoisting nav state through multiple layers.** Pass `onXxx` callbacks — not the `NavController` (Nav2) or `backStack` (Nav3) — to child composables.
 - **Using the old Accompanist Navigation Animation library.** Nav2.7+ has transition parameters on `composable(...)`; Nav3 has transitions at the `NavDisplay` / `Scene` level. `accompanist-navigation-animation` is retired.
 
 ## Deep Links
 
-- Nav3: register deep links on the `entry` via the scene strategies, or handle them in a top-level `LaunchedEffect(intent)` that resolves the intent to a destination key and pushes it.
+- Nav3: handle the link in a top-level `LaunchedEffect(intent)` that resolves the intent to a destination key and pushes it onto the back stack. (Scene strategies decide *which* entries render together for a given window size — they do not register URIs.)
 - Nav2: `deepLinks = listOf(navDeepLink { uriPattern = "..." })` on each `composable`.
 
 In both cases, the destination must be **self-sufficient** when entered from a deep link — do not assume previous destinations are on the stack.

@@ -164,7 +164,7 @@ If the user needs any of the above, narrow the scope and say so.
 - `references/effects.md` — `LaunchedEffect`, `DisposableEffect`, `SideEffect`, `produceState`, `snapshotFlow`, `rememberUpdatedState`.
 - `references/performance.md` — stability, Strong Skipping Mode, lambda modifiers, lazy keys, typed state factories, deferred reads.
 - `references/modifiers.md` — modifier ordering, lambda form, `Modifier.Node` over `composed { }`.
-- `references/navigation.md` — Navigation 3 (and what to replace from Navigation 2).
+- `references/navigation.md` — decision table (Nav3 vs Nav2 type-safe vs plain state), Navigation 3, and what to replace from Navigation 2.
 - `references/concurrency.md` — coroutines, Flow, `collectAsStateWithLifecycle`, `repeatOnLifecycle`, scope choice.
 - `references/flows.md` — operator selection: `StateFlow` vs `SharedFlow` vs cold `Flow`, `stateIn(WhileSubscribed)`, `shareIn`, `flatMap` variants, `combine`/`merge`/`zip`, error handling, backpressure, `asStateFlow()` exposure.
 - `references/component-api.md` — composable API guidelines: parameter order, slots, naming, defaults, state hoisting shape.

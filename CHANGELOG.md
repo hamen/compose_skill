@@ -7,6 +7,7 @@ Full release history for the Compose Skill Suite. The newest release is summaris
 **`compose-agent` only — Navigation 3 decision table.**
 
 - **Workflow entry point.** Added a "when to use" decision table to `skills/compose-agent/references/navigation.md`: Nav3 vs Nav2 type-safe vs plain state, argument passing, ViewModel-driven navigation, per-entry `ViewModel` scope, `BackHandler`, deep links, and `ListDetailSceneStrategy` vs `SinglePaneSceneStrategy`. Mirrors the `paging.md` decision-table pattern. Addresses [android/skills#50](https://github.com/android/skills/issues/50) (Nav3 was index-only without a workflow entry point).
+- **ViewModel-driven navigation guidance.** Tightened the existing guardrails and Common Mistakes to model pending navigation as durable UI state cleared after navigating (aligned with `flows.md` / `concurrency.md`), reserving `Channel<NavEvent>` for genuinely ephemeral, drop-tolerant signals — replacing the prior Channel/Flow-first wording.
 - **Versions.** `compose-agent` → `4.2.1`. `jetpack-compose-audit` unchanged at `4.2.0`.
 
 ### 4.2.0 — 2026-06-17 (release candidate — convergence testing before GA tag)
