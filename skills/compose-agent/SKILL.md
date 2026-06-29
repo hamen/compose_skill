@@ -29,7 +29,7 @@ If the repo pins older versions, match the repo — but call out what the modern
 3. Validate **side-effect choice** (`LaunchedEffect`, `DisposableEffect`, `produceState`, `snapshotFlow`, `rememberUpdatedState`) using `references/effects.md`.
 4. Review **composable performance** — stability, lambda modifiers, lazy list keys, deferred reads — using `references/performance.md`.
 5. Review **modifier usage** — ordering, lambda-form, `Modifier.Node` over `composed { }` — using `references/modifiers.md`.
-6. Review **navigation** using `references/navigation.md`.
+6. Review **navigation** using `references/navigation.md` — start from its decision table (Nav3 vs Nav2 type-safe vs plain state) before touching call sites.
 7. Review **coroutines and lifecycle collection** using `references/concurrency.md`.
 8. Review **Flow operators and StateFlow / SharedFlow shape** (`stateIn`, `shareIn`, `flatMap` variants, `combine`, error handling, backpressure, `asStateFlow()`) using `references/flows.md`.
 9. Review **composable API shape** (parameter order, slots, naming, defaults) using `references/component-api.md`.
