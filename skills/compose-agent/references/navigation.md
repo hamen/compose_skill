@@ -46,6 +46,8 @@ fun App() {
         entryProvider = entryProvider {
             entry<Home> {
                 HomeScreen(
+                    // the child screen wraps its actual Button onClick in
+                    // dropUnlessResumed { … } (see guardrails) before calling these
                     onOpenProfile = { userId -> backStack.add(Profile(userId)) },
                     onOpenSettings = { backStack.add(Settings()) },
                 )
@@ -65,7 +67,7 @@ Core shifts from Nav2:
 
 - **Back stack is plain state.** `backStack.add(key)` to push, `backStack.removeLastOrNull()` to pop. No `NavController.navigate(route)`.
 - **Destinations are `@Serializable` data classes / objects** that implement `NavKey`. Arguments are class fields. No string interpolation.
-- **Transitions, predictive back, and scenes are first-class.** Scene strategies decide which entries to show together on a given window size. Pass them via `NavDisplay(sceneStrategies = listOf(rememberListDetailSceneStrategy()))` and tag entries with `metadata = ListDetailSceneStrategy.listPane()` / `.detailPane()`. The adaptive list-detail strategy lives in `androidx.compose.material3.adaptive:adaptive-navigation3`; `SinglePaneSceneStrategy` is the default.
+- **Transitions, predictive back, and scenes are first-class.** Scene strategies decide which entries to show together on a given window size. Pass them via `NavDisplay(sceneStrategies = listOf(rememberListDetailSceneStrategy<NavKey>()))` and tag entries with `metadata = ListDetailSceneStrategy.listPane()` / `.detailPane()` (and `.extraPane()` for a third pane). The adaptive list-detail strategy lives in `androidx.compose.material3.adaptive:adaptive-navigation3`; `SinglePaneSceneStrategy` is the default.
 - **Entries are decorated with owners and state support.** `NavDisplay` includes `rememberSaveableStateHolderNavEntryDecorator()` by default so `rememberSaveable` works inside entries. Per-entry `ViewModelStoreOwner` is added explicitly with `rememberViewModelStoreNavEntryDecorator()` from `androidx.lifecycle:lifecycle-viewmodel-navigation3`.
 
 ### Guardrails For Nav3
@@ -75,9 +77,10 @@ Core shifts from Nav2:
 - Do not put `@Composable` functions or lambdas inside destination data. Destinations must be serializable.
 - `rememberNavBackStack(...)` takes a **`vararg` of `NavKey`** and returns `NavBackStack<NavKey>` — it is **not** generic. Call it `rememberNavBackStack(Home)`, never `rememberNavBackStack<NavKey>(Home)` (that does not compile). If you genuinely need `NavBackStack<MyKey>`, write your own thin wrapper; the library overload is `NavKey`-typed.
 - **Don't make a feature/screen ViewModel own or mutate the back stack.** Navigation triggered by a ViewModel should flow the other way: the route observes the VM's state and calls `backStack.add` / `removeLastOrNull` itself — do not inject `backStack` into a screen VM as a navigate-command surface. (A dedicated app-level navigation holder that *owns* the stack — like the recipes' `Navigator` / `NavigationState` — is a separate, legitimate pattern; the save-state doc also covers persisting a back stack from such a holder.)
-- To hand a **result** back from a child screen, Nav3 provides a `ResultEventBus`: add `rememberResultEventBusNavEntryDecorator()` to `entryDecorators`, call `LocalResultEventBus.current.sendResult(value)` on the producer, and consume it on the target either as state (`LocalResultEventBus.current.conflateAsState(...)`) or as a one-shot (`ResultEffect<T> { … }`). Both forms are official. Note the `conflateAsState` value is the latest result **within the current navigation lifetime — it is not retained across process death**; for an outcome that must survive that, persist it in a state holder (`flows.md`).
+- **Supplying `entryDecorators` replaces *all* built-in decorators.** Whenever you pass a custom list — for results, per-entry ViewModels, anything — re-add the defaults you still rely on, starting with `rememberSaveableStateHolderNavEntryDecorator()`. Without it, `rememberSaveable` inside entries silently stops working. (The official result recipes list only the result decorator precisely because those screens don't use `rememberSaveable` — don't copy that omission into a screen that does.)
+- To hand a **result** back from a child screen, Nav3 provides a `ResultEventBus`: add `rememberResultEventBusNavEntryDecorator()` to `entryDecorators` (alongside `rememberSaveableStateHolderNavEntryDecorator()` per the rule above), call `LocalResultEventBus.current.sendResult(value)` on the producer, and consume it on the target either as state (`LocalResultEventBus.current.conflateAsState(...)`) or as a one-shot (`ResultEffect<T> { … }`). Both forms are official. Note the `conflateAsState` value is the latest result **within the current navigation lifetime — it is not retained across process death**; for an outcome that must survive that, persist it in a state holder (`flows.md`).
 - Wrap navigation triggered by a tap in `dropUnlessResumed { backStack.add(...) }` (from `androidx.lifecycle.compose`) so a queued click cannot navigate from a screen that has already left `RESUMED` — every official recipe does this.
-- If an entry calls `viewModel()` and you want it scoped to that `NavEntry`, add `rememberViewModelStoreNavEntryDecorator()` (from `androidx.lifecycle.viewmodel.navigation3`) to `entryDecorators` — and include the default `rememberSaveableStateHolderNavEntryDecorator()` alongside it, since supplying `entryDecorators` replaces the defaults.
+- To scope a `viewModel()` to one `NavEntry`, add `rememberViewModelStoreNavEntryDecorator()` (from `androidx.lifecycle.viewmodel.navigation3`) to `entryDecorators` — again alongside `rememberSaveableStateHolderNavEntryDecorator()` per the replace-the-defaults rule.
 - Use `entryProvider { entry<Key> { … } }` to map destination type → composable. Each entry accepts the key so you can read its fields.
 
 ### Predictive Back
