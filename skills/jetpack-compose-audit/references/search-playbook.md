@@ -142,8 +142,8 @@ rg 'rememberNavBackStack' -g '*.kt' -n
 # NavDisplay host(s)
 rg 'NavDisplay\s*\(' -g '*.kt' -n
 
-# Destination key types
-rg '@Serializable' -g '*.kt' -n | grep -i 'NavKey\|: NavKey'
+# Destination key types (multiline: @Serializable often on separate line from : NavKey)
+rg -B1 ': NavKey' -g '*.kt' -n
 
 # Custom entry decorators
 rg 'entryDecorators\s*=' -g '*.kt' -n
@@ -157,10 +157,12 @@ rg 'rememberResultEventBusNavEntryDecorator|LocalResultEventBus|ResultEffect|con
 **Backstack ownership violation — feature ViewModel holds or mutates the back stack**
 
 ```bash
-rg 'NavBackStack|backStack' -g '*.kt' -l | xargs rg -l 'ViewModel\|viewModel\(\)' 2>/dev/null
+rg 'NavBackStack|backStack' -g '*.kt' -l | xargs rg -l 'ViewModel|viewModel\(\)' 2>/dev/null
 ```
 
 A feature/screen ViewModel must never own or directly mutate the back stack. Navigation signals should flow from the ViewModel as state/events that the *route* observes and acts on via `backStack.add` / `removeLastOrNull`. A dedicated app-level nav holder that *owns* the stack is a legitimate pattern; a feature ViewModel that receives `backStack` as a parameter for navigation is not.
+
+**High false-positive rate:** any file with both `backStack` and `viewModel()` matches — including `App.kt` where the nav holder and ViewModel co-exist legitimately. Always read the hit to confirm the ViewModel actually holds or mutates the stack, not merely that both symbols appear in the same file.
 
 Severity: **Blocker** — this couples navigation lifecycle to the ViewModel and defeats predictive back and scene strategies.
 
@@ -232,23 +234,26 @@ Severity: **Blocker** if mixed in the same flow; **Nit** if clearly isolated sub
 **String routes still used in Nav3 code**
 
 ```bash
+# Scope to Nav3 files only (from the detection query above) to avoid flagging Nav2 sub-graphs
 rg 'backStack\.add\s*\(\s*"' -g '*.kt' -n
-rg 'navigate\s*\(\s*"' -g '*.kt' -n
+# navigate("…") is a Nav2 API; flag only if found in a file that also uses NavDisplay/rememberNavBackStack
+rg 'navigate\s*\(\s*"' -g '*.kt' -l | xargs rg -l 'NavDisplay|rememberNavBackStack' 2>/dev/null
 ```
 
-Nav3 destinations are `@Serializable` typed keys — not strings. Any string passed to `backStack.add` is a code smell indicating a Nav2 migration that was only partially completed.
+Nav3 destinations are `@Serializable` typed keys — not strings. `backStack.add("…")` won't compile with `NavBackStack<NavKey>`, so a hit almost always indicates dead/migrated code or a type mismatch. `navigate("…")` in a file that also uses `NavDisplay` signals an incomplete Nav2→Nav3 migration.
 
-Severity: **Blocker** — no type safety, no compile-time verification, breaks process-death serialization.
+Severity: **Should-fix** (migration smell / likely dead code) rather than Blocker — Nav3's type system makes the string-route pattern a compile error in practice.
 
 ---
 
-**`@Composable` or lambda captured inside a destination data class**
+**`@Composable` or non-serializable type inside a NavKey destination**
 
 ```bash
-rg -A 10 'data class \w+ *\(' -g '*.kt' | grep -E '@Composable|\(\) ->'
+# Find NavKey destination types first
+rg -l ': NavKey' -g '*.kt' | xargs rg -n '@Composable|\(\s*\)\s*->\s*\w+|\([^)]+\)\s*->\s*\w+|suspend\s*\(' 2>/dev/null
 ```
 
-Destination data classes must be serializable plain data. Composable references, lambdas, or any non-serializable type as a field will crash at serialization time.
+Destination data classes must be serializable plain data. Composable references, lambdas (`() -> Unit`, `(String) -> Unit`, suspend lambdas), or any non-serializable type as a field will crash at serialization time. Scope the search to NavKey files to avoid noise from non-navigation data classes.
 
 Severity: **Blocker** — runtime crash on process death or `rememberSaveable`.
 
@@ -257,7 +262,7 @@ Severity: **Blocker** — runtime crash on process death or `rememberSaveable`.
 **`ResultEventBus` result assumed to survive process death**
 
 ```bash
-rg 'conflateAsState\|ResultEffect' -g '*.kt' -n
+rg 'conflateAsState|ResultEffect' -g '*.kt' -n
 ```
 
 `conflateAsState` delivers the latest result within the current navigation lifetime — it is **not** persisted across process death. If a result must survive process death, it belongs in a persisted state holder (e.g. `SavedStateHandle`), not just in `conflateAsState`.
