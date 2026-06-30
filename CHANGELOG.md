@@ -11,7 +11,7 @@ Full release history for the Compose Skill Suite. The newest release is summaris
 - **Docs-verified against nav3-recipes.** Every API shape in `navigation.md` checked against the official sample repo (artifacts, `NavKey` + `@Serializable`, `rememberNavBackStack`, `entryProvider` DSL, `entryDecorators` ordering, `rememberListDetailSceneStrategy` + pane metadata, intent→key deep-link decoding). Added a Nav3-alpha caveat, the `dropUnlessResumed` click guard, and the recipes repo to Primary Sources.
 - **Versions.** `compose-agent` → `4.2.1`. `jetpack-compose-audit` unchanged at `4.2.0`.
 
-### 4.2.0 — 2026-06-17 (release candidate — convergence testing before GA tag)
+### 4.2.0 — 2026-06-17
 
 **Paging 3 in Compose — guardrails for paged lazy lists.**
 

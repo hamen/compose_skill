@@ -1,6 +1,6 @@
 # Compose Skill Suite 4.2.0 Release Notes
 
-Status: release candidate — 2026-06-17 (convergence testing pending before GA tag)
+Released: 2026-06-17 · shipped in the `v4.2.1` suite release alongside the Navigation 3 decision table.
 
 Compose Skill Suite 4.2.0 adds **Paging 3 in Compose** as a first-class review and audit surface for AI coding agents — using the same thesis as animation 4.0: **LLM tells and guardrails**, not an API encyclopedia.
 
@@ -47,6 +47,6 @@ Scoped review entry:
 compose-agent focus on paging
 ```
 
-## Next: Convergence Testing
+## Validation
 
-Before tagging GA, run the validation plan in `docs/paging-skill-plan.md` across Claude, Codex, Cursor, and any other harness you use. Tune `paging.md` and audit heuristics from disagreements in a follow-up patch if needed.
+The paging guidance was validated through multi-agent cross-review (Claude, Codex, Cursor, Antigravity) against the official Android Paging Compose docs. The validation plan lives in `docs/paging-skill-plan.md`; re-run it and tune `paging.md` / audit heuristics from any disagreements in a follow-up patch.

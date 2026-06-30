@@ -15,7 +15,7 @@
 
 **`compose-agent` 4.2.1 · 2026-06-29** — Navigation 3 "when to use" decision table in `navigation.md` (workflow entry point: Nav3 vs Nav2 type-safe vs plain state, adaptive scene strategies; the back stack is mutated in the route, not a screen ViewModel; results via Nav3's `ResultEventBus`). Verified against the official `android/nav3-recipes` samples. `jetpack-compose-audit` stays at `4.2.0`.
 
-**Version 4.2.0 · 2026-06-17 (release candidate — convergence testing before GA tag)** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Multi-agent convergence testing planned before GA tag. Both skills ship as `4.2.0`.
+**Version 4.2.0 · 2026-06-17** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Validated through multi-agent cross-review. Both skills ship as `4.2.0`.
 
 > Find out where your Compose app is burning frames, by how much, and what to change to win them back — measured against real compiler data, not vibes.
 
