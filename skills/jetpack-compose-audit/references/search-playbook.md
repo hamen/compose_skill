@@ -123,7 +123,7 @@ Do not subtract from Performance, State, Side Effects, or Composable API Quality
 
 ## 2b. Navigation 3 Detection & Audit
 
-Run this section **only when Nav3 is present**. Nav3 ships a different model from Nav2 — wrong patterns are silent at compile time but break backstack restore, process death recovery, and recomposition safety.
+Run this section **only when Nav3 is present**. Nav3 ships a different model from Nav2 — many wrong patterns compile fine but break backstack restore, process death recovery, or recomposition safety at runtime. (Note: string routes and typed-key mismatches are often compile errors in Nav3; the runtime risks are primarily state/save-state related.)
 
 ### Detect Nav3 Usage
 
@@ -157,7 +157,7 @@ rg 'rememberResultEventBusNavEntryDecorator|LocalResultEventBus|ResultEffect|con
 **Backstack ownership violation — feature ViewModel holds or mutates the back stack**
 
 ```bash
-rg 'NavBackStack|backStack' -g '*.kt' -l | xargs rg -l 'ViewModel|viewModel\(\)' 2>/dev/null
+rg 'NavBackStack|backStack' -g '*.kt' -l | xargs -r rg -l 'ViewModel|viewModel\(\)' 2>/dev/null
 ```
 
 A feature/screen ViewModel must never own or directly mutate the back stack. Navigation signals should flow from the ViewModel as state/events that the *route* observes and acts on via `backStack.add` / `removeLastOrNull`. A dedicated app-level nav holder that *owns* the stack is a legitimate pattern; a feature ViewModel that receives `backStack` as a parameter for navigation is not.
@@ -195,12 +195,14 @@ Severity: **Blocker** — navigation fires on every recomposition, duplicates ba
 **Missing `dropUnlessResumed` click guard**
 
 ```bash
-rg 'onClick\s*=\s*\{[^}]*backStack\.add' -g '*.kt' -n
-# also check onXxx lambdas
-rg 'on\w+\s*=\s*\{[^}]*backStack\.add' -g '*.kt' -n
+# -U enables multiline matching so backStack.add can be on a different line than onClick
+rg -U 'onClick\s*=\s*\{[^}]*backStack\.add' -g '*.kt' -n
+rg -U 'on\w+\s*=\s*\{[^}]*backStack\.add' -g '*.kt' -n
+# Simpler alternative: find all backStack.add call sites and read surrounding context
+rg 'backStack\.add\(' -g '*.kt' -n -B3
 ```
 
-For each navigation-triggering tap handler: check it is wrapped in `dropUnlessResumed { backStack.add(...) }`. Without this guard, a queued tap can navigate from a screen that has already left `RESUMED`, pushing a duplicate entry during the exit animation.
+For each navigation-triggering tap handler: check it is wrapped in `dropUnlessResumed { backStack.add(...) }`. Regex matches are hints — multiline lambdas and nested braces require reading the actual code around each hit. Without this guard, a queued tap can navigate from a screen that has already left `RESUMED`, pushing a duplicate entry during the exit animation.
 
 Severity: **Should-fix** — rare in practice but reproducible with fast double-taps and on slow devices.
 
@@ -209,13 +211,17 @@ Severity: **Should-fix** — rare in practice but reproducible with fast double-
 **Anonymous or non-top-level destination keys**
 
 ```bash
-rg 'object\s*:\s*NavKey' -g '*.kt' -n         # anonymous object
-rg 'NavKey\b' -g '*.kt' -n | grep -v '^.*data\s\(class\|object\)' | grep 'NavKey'
+# Catch anonymous objects (object expression, not object declaration)
+rg 'object\s*:\s*NavKey' -g '*.kt' -n
+# Catch NavKey usages that are not top-level data class/object or sealed interface/class base types
+rg ': NavKey' -g '*.kt' -n | grep -Ev '(data (class|object)|sealed (class|interface)|^.*object\s+\w+\s*:)'
 ```
 
-All `NavKey` destinations must be **top-level `@Serializable` data classes or objects**. Anonymous inline keys (anonymous objects, local classes) break `rememberSaveable` and cannot be restored after process death.
+All `NavKey` **destination** types must be top-level `@Serializable` data classes or objects. Anonymous inline keys (object expressions) and local classes break `rememberSaveable` and cannot be restored after process death.
 
-Severity: **Blocker** — process-death restore fails; `rememberSaveable` inside that entry silently stops working.
+Valid patterns that must **not** be flagged: `sealed interface AppNavKey : NavKey`, `object HomeKey : NavKey` (named top-level object), base sealed hierarchies. Read each hit before filing — sealed/interface base types are always valid.
+
+Severity: **Blocker** for anonymous objects and local classes — process-death restore fails; `rememberSaveable` inside that entry silently stops working.
 
 ---
 
@@ -237,7 +243,7 @@ Severity: **Blocker** if mixed in the same flow; **Nit** if clearly isolated sub
 # Scope to Nav3 files only (from the detection query above) to avoid flagging Nav2 sub-graphs
 rg 'backStack\.add\s*\(\s*"' -g '*.kt' -n
 # navigate("…") is a Nav2 API; flag only if found in a file that also uses NavDisplay/rememberNavBackStack
-rg 'navigate\s*\(\s*"' -g '*.kt' -l | xargs rg -l 'NavDisplay|rememberNavBackStack' 2>/dev/null
+rg 'navigate\s*\(\s*"' -g '*.kt' -l | xargs -r rg -l 'NavDisplay|rememberNavBackStack' 2>/dev/null
 ```
 
 Nav3 destinations are `@Serializable` typed keys — not strings. `backStack.add("…")` won't compile with `NavBackStack<NavKey>`, so a hit almost always indicates dead/migrated code or a type mismatch. `navigate("…")` in a file that also uses `NavDisplay` signals an incomplete Nav2→Nav3 migration.
@@ -250,7 +256,7 @@ Severity: **Should-fix** (migration smell / likely dead code) rather than Blocke
 
 ```bash
 # Find NavKey destination types first
-rg -l ': NavKey' -g '*.kt' | xargs rg -n '@Composable|\(\s*\)\s*->\s*\w+|\([^)]+\)\s*->\s*\w+|suspend\s*\(' 2>/dev/null
+rg -l ': NavKey' -g '*.kt' | xargs -r rg -n '@Composable|\(\s*\)\s*->\s*\w+|\([^)]+\)\s*->\s*\w+|suspend\s*\(' 2>/dev/null
 ```
 
 Destination data classes must be serializable plain data. Composable references, lambdas (`() -> Unit`, `(String) -> Unit`, suspend lambdas), or any non-serializable type as a field will crash at serialization time. Scope the search to NavKey files to avoid noise from non-navigation data classes.
@@ -280,10 +286,18 @@ Severity: **Should-fix** when the result represents user data that must not be l
 
 ### Nav3 Scoring Note
 
-Nav3 findings map to the **Side Effects** and **State Management** score categories:
-- Backstack ownership violation, composition-body navigation → Side Effects
-- `entryDecorators` missing saveable-state decorator, anonymous keys, string routes → State Management
-- Missing `dropUnlessResumed` → Side Effects (Nit/Should-fix unless double-nav is observed)
+Nav3 findings map to existing score categories — do not open a new one:
+
+| Finding | Category |
+|---------|----------|
+| Feature ViewModel owns/mutates back stack | **State Management** (ownership of state) |
+| `entryDecorators` missing saveable-state decorator | **State Management** |
+| Anonymous / non-top-level `NavKey` types | **State Management** |
+| `ResultEventBus` result assumed to survive process death | **State Management** |
+| Navigation triggered in composition body | **Side Effects** |
+| Missing `dropUnlessResumed` click guard | **Side Effects** (Should-fix) |
+
+Report State findings as **Nav3 backstack state**; report Side Effects findings as **Nav3 navigation side effects**.
 
 Do not open a new score category for Nav3. If the project has no Nav2 code at all, note in the report that Nav2 navigation patterns are out of scope and Nav3 is the only navigation layer audited.
 

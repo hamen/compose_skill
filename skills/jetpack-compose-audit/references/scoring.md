@@ -287,6 +287,8 @@ When Nav3 is detected (see playbook section 2b), also deduct for:
 - `backStack.add` / `backStack.removeLastOrNull` called directly in the composition body instead of inside an event handler or `LaunchedEffect` — navigation fires on every recomposition → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
 - Tap handler missing `dropUnlessResumed { backStack.add(...) }` — a queued tap can navigate from a screen already in exit animation, duplicating the back-stack entry → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
 
+Note: "feature ViewModel owns/mutates the back stack" is a **State Management** finding (see above), not Side Effects — do not score it here.
+
 Name Nav3 side-effect findings as **Nav3 navigation side effects** in the Side Effects section.
 
 Suggested interpretation:

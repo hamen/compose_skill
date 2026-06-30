@@ -194,6 +194,8 @@ Stability deductions from step 5 are measured evidence and should be weighted no
 
 Use the scoring rubric in `references/scoring.md` and the heuristics in `references/search-playbook.md`.
 
+> **Navigation 3:** if the repo uses `rememberNavBackStack`, `NavDisplay`, or `NavKey`, run **playbook section 2b** (Nav3 Detection & Audit) before scoring. Nav3 findings map to State Management and Side Effects — see the scoring note in section 2b.
+
 #### Performance
 
 Focus on:
