@@ -17,7 +17,7 @@ Start here. Pick the row that matches the situation, then read the matching sect
 | **Nav3:** adaptive layout, list + detail side-by-side on large screens, stacked on phones | `ListDetailSceneStrategy` |
 | **Nav3:** default one-screen-at-a-time presentation | `SinglePaneSceneStrategy` (the default) |
 | Passing an argument to a destination | **Nav3:** a field on the `@Serializable` `NavKey` data class — never interpolate a string. **Nav2 type-safe:** fields on the `@Serializable` destination, read via `toRoute()` |
-| Navigating off a ViewModel signal | the route observes the VM and calls `backStack.add` / `removeLastOrNull` **itself** — **never** inject the `backStack` (Nav3) / `navController` (Nav2) into the ViewModel |
+| Navigating off a ViewModel signal | the route observes the VM and calls `backStack.add` / `removeLastOrNull` **itself** — **don't** inject the `backStack` (Nav3) / `navController` (Nav2) into a screen/feature VM (a dedicated app-level nav holder that owns the stack is a separate pattern) |
 | Passing a result back from another screen (Nav3) | the `ResultEventBus` (`rememberResultEventBusNavEntryDecorator()`); consume as state (`conflateAsState`) or as a one-shot (`ResultEffect { … }`) |
 | **Nav3:** scoping a `viewModel()` to one entry | `rememberViewModelStoreNavEntryDecorator()` after the default saveable-state decorator (Nav2 already scopes `viewModel()` to the `NavBackStackEntry` — do not add this there) |
 | Intercepting back (unsaved-changes guard) | `BackHandler` on that screen only — otherwise rely on the default nav-host back handling (`NavDisplay.onBack` for Nav3 / `NavHost` for Nav2) |
@@ -119,7 +119,7 @@ Guardrails:
 ## Common Mistakes
 
 - **Navigating inside a composition.** Call sites should be callbacks wired to events, not computed during composition. `onClick = { navController.navigate(...) }` is right. Calling `navController.navigate(...)` in the composable body is wrong and will fire on every recomposition.
-- **Capturing the `navController` (Nav2) or `backStack` (Nav3) in a ViewModel.** Navigation is a UI concern; the back stack is mutated in the route, never the ViewModel. Have the UI observe the VM (its state, or Nav3's `ResultEventBus` for a returned result) and navigate itself.
+- **Capturing the `navController` (Nav2) or `backStack` (Nav3) in a screen/feature ViewModel.** Navigation is a UI concern; the back stack is mutated in the route, not a screen VM. Have the UI observe the VM (its state, or Nav3's `ResultEventBus` for a returned result) and navigate itself. (A dedicated app-level navigation holder that *owns* the stack is fine — see the guardrail above.)
 - **Using `BackHandler` everywhere.** Only use it when the screen genuinely needs to intercept back (confirm unsaved changes, close a search field). Otherwise the framework's back handling is fine.
 - **Hoisting nav state through multiple layers.** Pass `onXxx` callbacks — not the `NavController` (Nav2) or `backStack` (Nav3) — to child composables.
 - **Using the old Accompanist Navigation Animation library.** Nav2.7+ has transition parameters on `composable(...)`; Nav3 has transitions at the `NavDisplay` / `Scene` level. `accompanist-navigation-animation` is retired.
