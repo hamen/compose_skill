@@ -2,6 +2,16 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.2.2 — 2026-06-30
+
+**`jetpack-compose-audit` only — Navigation 3 audit patterns.**
+
+- **Nav3 detection.** `search-playbook.md` gains section 2b: detection grep, then nine targeted red-flag patterns covering anonymous `NavKey` types, `@Composable`/lambda fields in keys, composition-body navigation, missing `dropUnlessResumed`, missing `rememberSaveableStateHolderNavEntryDecorator`, back-stack ownership in feature ViewModels, `ResultEventBus` process-death risk, and Nav2 + Nav3 flow conflict.
+- **Scoring table.** `scoring.md` maps all Nav3 findings to existing categories: State Management (anonymous keys, ViewModel ownership, `ResultEventBus` risk) and Side Effects (composition-body navigation, missing `dropUnlessResumed`); `@Composable`-in-NavKey and Nav2+Nav3 conflict promoted to Critical Findings.
+- **Canonical sources.** Added `https://developer.android.com/guide/navigation/navigation-3` and `https://github.com/android/nav3-recipes` to `canonical-sources.md`.
+- **SKILL.md trigger.** Step 5 now directs auditors to run playbook section 2b whenever `rememberNavBackStack`, `NavDisplay`, or `NavKey` is detected.
+- **Versions.** `jetpack-compose-audit` → `4.2.2`. `compose-agent` unchanged at `4.2.1`.
+
 ### 4.2.1 — 2026-06-29
 
 **`compose-agent` only — Navigation 3 decision table.**
