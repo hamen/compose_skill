@@ -223,6 +223,16 @@ Deduct for:
 
 When any of these paging rules affects the State management score, name it in the State section as **Paging load-state handling** rather than folding it into a generic state note.
 
+**Navigation 3 deductions (State management)**
+
+When Nav3 is detected (see playbook section 2b), also deduct for:
+- `entryDecorators` list supplied without re-adding `rememberSaveableStateHolderNavEntryDecorator()` — `rememberSaveable` inside entries silently stops persisting state → [Nav3 save state](https://developer.android.com/guide/navigation/navigation-3/save-state)
+- Anonymous or non-top-level `NavKey` destination types — breaks process-death restore and `rememberSaveable` for that entry → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
+- Feature/screen ViewModel owns or mutates the back stack directly — navigation lifecycle coupled to ViewModel, defeats predictive back and scene strategies → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
+- `ResultEventBus` / `conflateAsState` result treated as surviving process death — result is only available within the current navigation lifetime; persist in `SavedStateHandle` if survival is required → [Nav3 save state](https://developer.android.com/guide/navigation/navigation-3/save-state)
+
+Name Nav3 state findings as **Nav3 backstack state** in the State section.
+
 Suggested interpretation:
 
 - `9-10`: strong UDF, clear ownership, minimal ambiguity
@@ -270,6 +280,16 @@ Deduct for:
 - unconditional `lazyPagingItems.refresh()` / `retry()` from the composable body or bare `LaunchedEffect(Unit)` without a documented one-shot reason — initial load belongs to `PagingData`; refresh is user-driven → [paging compose](https://developer.android.com/topic/libraries/architecture/paging/v3-compose), [side-effects](https://developer.android.com/develop/ui/compose/side-effects)
 
 When this paging rule affects the Side Effects score, name it in the Side Effects section as **Paging side-effect signals** rather than folding it into a generic effect note — mirroring **Paging list correctness** (Performance) and **Paging load-state handling** (State).
+
+**Navigation 3 deductions (Side Effects)**
+
+When Nav3 is detected (see playbook section 2b), also deduct for:
+- `backStack.add` / `backStack.removeLastOrNull` called directly in the composition body instead of inside an event handler or `LaunchedEffect` — navigation fires on every recomposition → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
+- Tap handler missing `dropUnlessResumed { backStack.add(...) }` — a queued tap can navigate from a screen already in exit animation, duplicating the back-stack entry → [Nav3](https://developer.android.com/guide/navigation/navigation-3)
+
+Note: "feature ViewModel owns/mutates the back stack" is a **State Management** finding (see above), not Side Effects — do not score it here.
+
+Name Nav3 side-effect findings as **Nav3 navigation side effects** in the Side Effects section.
 
 Suggested interpretation:
 

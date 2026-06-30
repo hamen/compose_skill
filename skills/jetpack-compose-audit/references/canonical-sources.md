@@ -124,8 +124,12 @@ This grounds:
   `https://developer.android.com/develop/ui/compose/custom-modifiers`
 - Android Developers: `Locally scoped data with CompositionLocal`  
   `https://developer.android.com/develop/ui/compose/compositionlocal`
-- Android Developers: `Navigation with Compose`  
+- Android Developers: `Navigation with Compose` (Nav2)
   `https://developer.android.com/develop/ui/compose/navigation`
+- Android Developers: `Navigation 3`
+  `https://developer.android.com/guide/navigation/navigation-3`
+- nav3-recipes (official sample repo, verified API shapes)
+  `https://github.com/android/nav3-recipes`
 
 These ground:
 
