@@ -68,6 +68,49 @@ Modifier.graphicsLayer { this.alpha = alpha } // draw-phase read
 
 Same idea for `rotate` and `scale` via `graphicsLayer`. `padding` does **not** have a lambda-form overload in Compose today, so animated padding still reads in composition and remeasures layout. If the effect is really positional motion, prefer `offset` / `graphicsLayer` when that is visually equivalent.
 
+## Never Back-Write Across Phases
+
+The reverse of deferring reads. Layout runs after composition and draw runs after layout, so if a **later phase writes state an earlier phase read**, the earlier phase re-runs — a feedback loop, often once per frame. Two shapes to avoid:
+
+**Layout → composition.** A layout callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) that writes state a sibling reads in composition:
+
+```kotlin
+// Bad — measure → write → recompose loop
+var labelWidth by remember { mutableIntStateOf(0) }
+Text(label, Modifier.onSizeChanged { labelWidth = it.width }) // layout writes
+Spacer(Modifier.width(with(LocalDensity.current) { labelWidth.toDp() })) // composition reads → recomposes
+
+// Good — keep the measured value in the layout phase
+Layout(content = { Text(label); Text(value) }) { measurables, constraints -> /* place value using label's measured width */ }
+```
+
+If a child genuinely needs the parent's constraints, `BoxWithConstraints` / `SubcomposeLayout` is fine — that exposes *parent constraints*, not a sibling's measured size. Do not round-trip a measured size through composition-read state.
+
+**Mutating a snapshot collection in the composition body.** A `mutableStateListOf` / `mutableStateMapOf` (or `toMutableStateList()` / `toMutableStateMap()`) mutated (`add`, `put`, `putAll`, `clear`, `[k] =`, `+=`) inside a `@Composable` body that also reads it invalidates the composition that produced it:
+
+```kotlin
+// Bad — mutate-and-read in the same composition
+val heights = remember { mutableStateMapOf<String, Int>() }
+rows.forEach { heights[it.id] = it.baseHeight } // write in composition
+Column { rows.forEach { Box(Modifier.height((heights[it.id] ?: 0).dp)) } } // read → self-invalidates
+
+// Good — derive from inputs, no snapshot write in composition
+val heights = remember(rows) { rows.associate { it.id to it.baseHeight } }
+```
+
+Mutate snapshot state from an event handler, `LaunchedEffect`, or a state holder — never during composition.
+
+## Optimizations That Do Nothing
+
+These *look* like recomposition fixes but change nothing. Don't write them, and don't leave them behind as "optimized":
+
+- `remember(index) { isFirstRow(index) }` — a pure, cheap function of its own key. Same inputs, no skipping benefit; inline it. Only `remember` genuinely expensive work keyed on real inputs.
+- Wrapping a callback in `remember` to "stabilize" it **under Strong Skipping** — the compiler already auto-memoizes lambdas passed to composables. That lever only matters SSM-off, on `@NonSkippableComposable` / `@DontMemoize` paths, or when the lambda captures an unstable value.
+- Identity-caching a read-only derived map to preserve reference equality — `remember(keys)` on the inputs is enough and won't serve stale data.
+- Hoisting state up without stabilizing the values passed back down — a fresh unstable instance each recomposition still defeats skipping on the child.
+
+Prove a real win with recomposition counts (Layout Inspector) or compiler reports, not the presence of a pattern.
+
 ## Lazy Lists Need Keys
 
 ```kotlin
@@ -167,6 +210,8 @@ Shipping a baseline profile is still one of the biggest end-user performance win
 - `Modifier\.offset\(` / `Modifier\.alpha\(` / `Modifier\.scale\(` / `Modifier\.rotate\(` / `Modifier\.padding\(` — look at the argument; if it reads an animated state, recommend lambda-form
 - `items\(\s*\w+\s*\)\s*\{` in a `Lazy*` without `key =` — probably missing keys
 - `animateItemPlacement\(` — migrate to `animateItem()`
+- `onSizeChanged|onGloballyPositioned|onPlaced` — check the lambda writes state read in composition (layout → composition back-write)
+- `mutableStateListOf|mutableStateMapOf|toMutableStateList|toMutableStateMap` — check for `add`/`put`/`clear`/`[k] =`/`+=` mutation inside a `@Composable` body that also reads it
 - `@NonSkippableComposable` / `@DontMemoize` — demand justification
 
 ## Primary Sources

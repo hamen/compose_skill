@@ -2,6 +2,16 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.3.1 — 2026-07-06
+
+**`compose-agent` only — authoring guidance for cross-phase back-writes + false leads.**
+
+Follow-up to 4.3.0: the audit could catch these after the fact, but the authoring skill stayed silent while writing. Now `compose-agent` warns up front, closing the drift the 4.3.0 cross-review flagged.
+
+- **`performance.md`.** New **Never Back-Write Across Phases** section (layout callbacks writing composition-read state; snapshot-collection mutation in a `@Composable` body — with good/bad Kotlin) and an **Optimizations That Do Nothing** section (the false leads: `remember(index)` on pure fns, `remember`-ing an auto-memoized callback under Strong Skipping, identity caches for derived maps, hoisting without stabilizing captures). Grep triggers gain `onSizeChanged` / `onGloballyPositioned` / `onPlaced` and snapshot-collection mutation.
+- **`SKILL.md`.** New Core Instruction (no cross-phase back-writes, no no-op optimizations), review-checklist line, and Review Process step 4 now names cross-phase back-writes.
+- **Versions.** `compose-agent` → `4.3.1`. `jetpack-compose-audit` unchanged at `4.3.0`.
+
 ### 4.3.0 — 2026-07-06
 
 **`jetpack-compose-audit` only — cross-phase back-write detection + false-lead guard.**

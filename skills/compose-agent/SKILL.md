@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'paging', 'lifecycle', 'animation', 'testing', 'focus', 'kmp']"
 metadata:
   author: Ivan Morgillo
-  version: "4.2.1"
+  version: "4.3.1"
 ---
 
 # Compose Agent
@@ -27,7 +27,7 @@ If the repo pins older versions, match the repo — but call out what the modern
 1. Check for **deprecated or soft-deprecated API** using `references/api.md`.
 2. Validate **state and data flow** using `references/state.md`.
 3. Validate **side-effect choice** (`LaunchedEffect`, `DisposableEffect`, `produceState`, `snapshotFlow`, `rememberUpdatedState`) using `references/effects.md`.
-4. Review **composable performance** — stability, lambda modifiers, lazy list keys, deferred reads — using `references/performance.md`.
+4. Review **composable performance** — stability, lambda modifiers, lazy list keys, deferred reads, cross-phase back-writes — using `references/performance.md`.
 5. Review **modifier usage** — ordering, lambda-form, `Modifier.Node` over `composed { }` — using `references/modifiers.md`.
 6. Review **navigation** using `references/navigation.md` — start from its decision table (Nav3 vs Nav2 type-safe vs plain state) before touching call sites.
 7. Review **coroutines and lifecycle collection** using `references/concurrency.md`.
@@ -51,6 +51,7 @@ If doing a partial review, load only the relevant reference files — each refer
 - Collect Flows with `collectAsStateWithLifecycle()` in UI code. Plain `collectAsState()` keeps collecting when the screen is not visible and burns battery and bandwidth. **Exception:** `Flow<PagingData<T>>` is collected with `collectAsLazyPagingItems()`, never `collectAsStateWithLifecycle()` — see `references/paging.md`.
 - Prefer `rememberSaveable` over `remember` for UI state that should survive configuration change or process death, unless the value is unserializable or derivable.
 - Use the typed state factories (`mutableIntStateOf`, `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`) for primitive state. Raw `mutableStateOf<Int>(...)` boxes.
+- Never write state back across phases. A layout callback (`onSizeChanged` / `onGloballyPositioned` / `onPlaced`) must not write state that a sibling reads in composition, and never mutate a `mutableStateListOf` / `mutableStateMapOf` inside a composable body that also reads it — both create measure/mutate → recompose loops. Consume measured values in layout/draw, or mutate snapshot state from an event / `LaunchedEffect` / state holder. And don't ship no-op "optimizations" (`remember(index)` on a pure function, `remember`-ing an already-auto-memoized callback under Strong Skipping) — prove a win with recomposition counts, not the pattern. See `references/performance.md`.
 - Never put a lambda in a `CompositionLocal`. Use explicit parameters.
 - Do not introduce third-party libraries without asking first. The Accompanist libraries covering pager, swipe-refresh, flow layout, and system UI controller are **deprecated** — the functionality is in AndroidX now (`HorizontalPager`, `PullToRefreshBox`, `FlowRow`/`FlowColumn`, `enableEdgeToEdge()`).
 - When an element's background reads from `MaterialTheme.colorScheme.*` (directly or via a blend), its text and icon colors must read from the same theming source. Hard-coded `Color.Black` / `Color.White` / raw ARGB literals over theme-driven backgrounds are dark-mode regressions. See `references/component-api.md`.
@@ -141,6 +142,7 @@ When the agent is **writing new code** rather than reviewing, the same rules app
 - If it collects a Flow, is it `collectAsStateWithLifecycle()`? (A `Flow<PagingData<T>>` is the exception — it uses `collectAsLazyPagingItems()`.)
 - Is the parameter order: data → modifier → other → content slot last?
 - If it animates, is the API declarative first, remembered where needed, lifecycle-aware, and phase-correct?
+- Does any layout callback or snapshot-collection mutation write state read back in composition (a cross-phase / self-invalidation loop)?
 - If it pages, are keys stable, `LoadState` handled, and refresh/retry user-driven?
 - If it needs focus, testing, or platform-specific behavior, did you load the focused reference before judging?
 
