@@ -75,11 +75,12 @@ The reverse of deferring reads: never write state you have already read in the s
 **Layout → composition (cross-phase).** A layout callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) that writes state a sibling reads in composition — measure runs after composition, so the write re-runs composition, often once per frame:
 
 ```kotlin
-// Bad — measure → write → recompose loop; value's offset is read in composition
+// Bad — measure → write → recompose loop; labelWidth is read in composition
 var labelWidth by remember { mutableIntStateOf(0) }
 Box {
     Text(label, Modifier.onSizeChanged { labelWidth = it.width }) // layout writes
-    Text(value, Modifier.offset { IntOffset(labelWidth, 0) }.padding(start = 8.dp)) // was: composition read
+    // non-lambda offset(x = …) reads labelWidth in COMPOSITION → recomposes on every measure
+    Text(value, Modifier.offset(x = with(LocalDensity.current) { labelWidth.toDp() }))
 }
 
 // Good — one Layout measures label and places value after it; no composition-read hop
@@ -157,11 +158,11 @@ Same for `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`. Th
 
 ## Lambdas In Composables
 
-With SSM on, most lambdas are compiler-memoized. You do **not** need to manually wrap every callback in `remember { { ... } }`. That pattern is legacy and adds noise.
+With SSM on, Compose wraps lambdas in `remember` for you — **all** of them, including those with unstable captures. You do **not** need to manually wrap callbacks in `remember { { ... } }`. That pattern is legacy and adds noise (see *Optimizations That Do Nothing*).
 
 Two cases where manual remembering still matters:
 
-1. **Lambdas passed across module boundaries to generic composables whose generics hide the type.** The compiler can miss memoization. If a profiler shows identity-based churn, `remember`.
+1. **Strong Skipping is off, or the lambda is on a `@DontMemoize` / `@NonSkippableComposable` path.** There the compiler does not wrap the lambda — `remember` it (and stabilize its captures) if a profiler shows identity-based churn.
 2. **Expensive derivations inside lambdas.** If the lambda itself is cheap but allocates a large structure, that allocation happens on every call. Move the allocation outside.
 
 ## Expensive Work In Composition
