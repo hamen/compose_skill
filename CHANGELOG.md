@@ -2,6 +2,15 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.3.0 — 2026-07-06
+
+**`jetpack-compose-audit` only — cross-phase back-write detection + false-lead guard.**
+
+- **Cross-phase back-writes (new detector).** The audit already deducted for same-body backwards writes; it now also catches the subtler cross-phase shape — a later phase writing snapshot state an earlier phase read. `search-playbook.md` §3 gains a **Cross-Phase Back-Write Heuristic** (layout callbacks `onSizeChanged` / `onGloballyPositioned` / `onPlaced` writing state a sibling reads in composition; `SnapshotStateMap` / `SnapshotStateList` mutated inside a `@Composable` body). `scoring.md` adds the matching Performance deduction (Critical when the loop is per-frame or spans reused lazy items). `diagnostics.md` Quick Triage Recipe gains step 7 to surface candidates up front. Findings cite writer and reader `file:line`.
+- **False-lead guard (scoring correctness).** `scoring.md` Performance gains a **Do Not Credit — False Leads** table: plausible "recomposition fixes" that change nothing (`remember(index)` on pure functions, identity caches for derived maps, layout modifiers on both measured and sibling rows, `Exactly(1)` forced on both rows, hoisting without stabilizing lambda captures). The auditor no longer rewards these and will not emit them in `Prioritized Fixes` — it verifies against runtime counts / compiler reports instead of the presence of the pattern.
+- **Attribution.** The three-axis framing and the false-lead cases are adapted (reworded, re-cited against `developer.android.com`) from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) `compose-recomposition-performance` (Apache-2.0). Axes 1 (stability/skipping) and 2 (deferred reads) were already covered by this suite; this release imports only axis 3 and the false-lead guard.
+- **Versions.** `jetpack-compose-audit` → `4.3.0`. `compose-agent` unchanged at `4.2.1`.
+
 ### 4.2.2 — 2026-06-30
 
 **`jetpack-compose-audit` only — Navigation 3 audit patterns.**

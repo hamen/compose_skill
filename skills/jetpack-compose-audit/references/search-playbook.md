@@ -340,6 +340,7 @@ Do not open a new score category for Nav3. If the project has no Nav2 code at al
 - scroll or animation state read high in the tree
 - fast-changing values passed to non-lambda modifiers when a layout/draw-phase alternative exists
 - backwards writes — *writing to state that has already been read in the same composition body* (this is the precise definition; reading after writing is fine)
+- cross-phase back-writes — a **later phase writes snapshot state that an earlier phase already read**, re-invalidating it. Two shapes to verify: (1) a **layout-phase** callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) writes a `mutableStateOf` / `mutableIntStateOf` that a **sibling reads in composition** → measure → write → recompose loop, often on every frame during resize/scroll; (2) a **`SnapshotStateMap` / `SnapshotStateList` mutated inside a `@Composable` body** (`putAll`, `add`, `remove`, `clear`, `[k] =`) while the same composition reads it → the write invalidates the composition that produced it. See the cross-phase back-write heuristic below
 - `mutableStateOf<Int>` / `<Long>` / `<Float>` / `<Double>` — the typed factories avoid boxing
 - raw `List`/`Map`/`Set` parameters on widely reused composables when `kotlinx.collections.immutable` is already a dependency
 - `@NonSkippableComposable` / `@DontMemoize` without a justifying comment
@@ -433,6 +434,20 @@ Positive signals to reward:
 - `remember { Animatable(...) }` + `LaunchedEffect(target) { animatable.animateTo(target) }` pattern
 - `AnimatedContent(targetState, label = "...")` when the call site needs custom enter/exit or size-aware transitions; `Crossfade` for standard fade-only swaps
 - reusable animated components exposing `animationSpec: AnimationSpec<T>` when callers need timing control, and using meaningful labels on tooling-visible animations
+
+### Cross-Phase Back-Write Heuristic
+
+A later phase writing state an earlier phase already read forces re-invalidation — the subtle cousin of same-body backwards writes. Layout runs after composition and draw runs after layout, so a write from layout/draw into state read in composition re-runs composition. No single regex proves it; gather candidates, then read each call site.
+
+1. **Layout → composition writes.** List the layout callbacks: `rg -n 'onSizeChanged|onGloballyPositioned|onPlaced' -g '*.kt'`. For each hit, check whether its lambda **writes** a state holder (`something = ...`, `state.value = ...`, `.intValue =`) rather than only reading. Then confirm that written state is **read during composition** — by a sibling composable, a parent, or the same subtree (not only inside a deferred lambda modifier). That is a layout→composition back-write. It is legitimate only when the value is read exclusively in a later layout/draw pass (e.g. fed straight into `Modifier.layout { }` / `Modifier.drawBehind { }`); flag it when a composition-phase read exists.
+2. **Snapshot-collection mutation during composition.** Find snapshot collections: `rg -n 'mutableStateListOf|mutableStateMapOf|SnapshotStateList|SnapshotStateMap' -g '*.kt'`. Then look for mutations — `rg -n '\.(putAll|put|add|addAll|remove|clear)\(|\]\s*=' -g '*.kt'` — that sit **directly in a `@Composable` body** (not in an event handler, `LaunchedEffect`, or state holder). A collection mutated and read in the same composition re-invalidates it every pass.
+
+Severity: **Should-fix**, promoted to **Blocker** when the loop is per-frame (resize/scroll/animation-driven) or spans reused lazy items. Cite the writer's `file:line` and the reader's `file:line` in the finding. Docs: [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices).
+
+Positive signals to reward:
+
+- a measured size / position written from a layout callback is consumed only in `Modifier.layout { }` / `Modifier.offset { }` / `Modifier.drawBehind { }` (stays in layout/draw, never re-enters composition)
+- `SubcomposeLayout` / `BoxWithConstraints` used where a child genuinely needs parent constraints, instead of round-tripping measured size through composition-read state
 
 ### Strong Skipping Mode Check
 

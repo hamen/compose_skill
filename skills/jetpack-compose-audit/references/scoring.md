@@ -100,6 +100,7 @@ Deduct for:
 - reading rapidly changing state too high in the tree → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - frequent-state values passed to non-lambda modifiers when a layout/draw-phase alternative exists → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - backwards writes — writing to state already read in the same composition body → [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
+- cross-phase back-writes — a later phase writing snapshot state an earlier phase already read: a layout-phase callback (`onSizeChanged` / `onGloballyPositioned` / `onPlaced`) writing state that a sibling reads in composition, or a `SnapshotStateMap` / `SnapshotStateList` mutated (`putAll` / `add` / `clear` / `[k] =`) inside a `@Composable` body that also reads it. Deduct when a composition-phase read of the written state exists (measure → write → recompose loop); promote to a Critical Finding when the loop is per-frame or spans reused lazy items → [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 - repeated broad recomposition smells across screens/components → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
 - raw `List`/`Map`/`Set` parameters on widely reused composables when the rest of the codebase has the immutable-collections dependency available — deduct when Strong Skipping is OFF (unstable params block skipping outright), or when Strong Skipping is ON but the collection is rebuilt per recomposition in source (e.g. `listOf(a, b)` / `mapOf(...)` in a composable body, a getter that allocates, or `.toList()` / `.filter { }` on every call). Under Strong Skipping without observable churn, do not deduct → [stability](https://developer.android.com/develop/ui/compose/performance/stability)
 - unstable composable params whose `equals()` is expensive, allocating, or semantically broken — for example, a plain `class Foo(...)` with identity equality passed to a reusable composable, a `data class` wrapping a large collection (deep `equals` on every recomposition), or a `data class` with mutable fields (stale skip results). Under Strong Skipping, every recomposition runs `equals()` on each unstable param to decide whether to skip; expensive equality can make "skipping" as costly as recomposing, and broken equality makes skipping silently wrong → [strong skipping](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping), [stability](https://developer.android.com/develop/ui/compose/performance/stability)
@@ -178,6 +179,20 @@ Under Strong Skipping the more informative evidence is no longer "how many unsta
 When compiler reports are **not** available (Step 4 failed, `Compiler diagnostics used: no`), ceilings do not apply — rely on source-inferred judgment, but cap any Performance score at 7 to reflect reduced confidence.
 
 If a non-trivial subset of modules failed to build (partial reports), state which modules contributed and treat `skippable%` as a floor estimate rather than a ground truth.
+
+#### Do Not Credit — False Leads
+
+Changes that *look* like recomposition fixes but do not reduce recomposition count. **Never reward them, and never emit them in `Prioritized Fixes`.** If the codebase already applies one, treat it as neutral (no credit); if a finding's suggested fix would be one of these, discard the finding or replace the fix with the real one. When code applies a false lead *in place of* the real fix, the underlying smell still stands and is scored on its own merits.
+
+| Looks like a fix | Why it does nothing | Real lever |
+|---|---|---|
+| `remember(index) { isFirstRow(index) }` (or any `remember(k)` wrapping a pure, cheap function of its own key) | Same inputs each call; the memo saves no work and adds bookkeeping — no skipping benefit | Inline the expression; only `remember` genuinely expensive work keyed on real inputs |
+| Identity/instance cache for a read-only derived map (`remember { }` returning a cached map to preserve reference equality) | Can serve stale overlays; `remember(keys)` on the actual inputs is enough and correct | `remember(keys) { derive() }` — key on the inputs, not on identity |
+| `mutableIntStateOf` + a layout modifier applied to **both** the measured row and its sibling | The sibling still reads the size **in composition** unless it is measure-only; boxing was never the problem | Make the sibling read measured size in layout/draw (`Modifier.layout { }`), or hoist the shared value out of the round-trip |
+| Forcing `assertRecompositionCount(Exactly(1))` on **both** rows in a focus-move / selection test | One row often *correctly* recomposes 0 times; the assertion encodes a wrong expectation, not a fix | Assert the count each row should actually have; investigate only rows that exceed it |
+| Hoisting state up without stabilizing the lambda captures passed back down | A fresh lambda instance every recomposition still defeats skipping on the child | Hoist **and** stabilize — `remember` the callbacks, or pass method references / stable event objects |
+
+Route: these mirror the search-playbook cross-phase and stability heuristics. Before crediting any "we optimized recomposition here" claim, confirm it is not one of the above — prefer runtime recomposition counts or compiler reports as proof over the presence of the pattern.
 
 ### State Management
 

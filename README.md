@@ -13,7 +13,7 @@
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**`compose-agent` 4.2.1 · 2026-06-29** — Navigation 3 "when to use" decision table in `navigation.md` (workflow entry point: Nav3 vs Nav2 type-safe vs plain state, adaptive scene strategies; the back stack is mutated in the route, not a screen ViewModel; results via Nav3's `ResultEventBus`). Verified against the official `android/nav3-recipes` samples. `jetpack-compose-audit` stays at `4.2.0`.
+**`jetpack-compose-audit` 4.3.0 · 2026-07-06** — Cross-phase back-write detection (layout callbacks writing state read in composition; snapshot collections mutated in a composable body) plus a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Axis 3 of the recomposition problem, adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0). `compose-agent` stays at `4.2.1`.
 
 **Version 4.2.0 · 2026-06-17** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Validated through multi-agent cross-review. Both skills ship as `4.2.0`.
 
@@ -28,6 +28,15 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.3.0 — 2026-07-06
+
+**`jetpack-compose-audit` — cross-phase back-writes + false-lead guard.**
+
+- **Cross-phase back-write detector.** Beyond same-body backwards writes, the audit now flags a later phase writing snapshot state an earlier phase read: `onSizeChanged` / `onGloballyPositioned` / `onPlaced` (layout) writing state a sibling reads in composition, or `SnapshotStateMap` / `SnapshotStateList` mutated inside a `@Composable` body. New **Cross-Phase Back-Write Heuristic** in [`search-playbook.md`](./skills/jetpack-compose-audit/references/search-playbook.md), matching Performance deduction in [`scoring.md`](./skills/jetpack-compose-audit/references/scoring.md), triage step 7 in [`diagnostics.md`](./skills/jetpack-compose-audit/references/diagnostics.md). Findings cite writer and reader `file:line`.
+- **False Leads guard.** New **Do Not Credit — False Leads** table in `scoring.md`: plausible recomposition "fixes" that change nothing. The auditor no longer rewards them and will not suggest them in `Prioritized Fixes`.
+- **Attribution.** Axis 3 and the false-lead cases adapted (reworded, re-cited against `developer.android.com`) from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) `compose-recomposition-performance` (Apache-2.0). Axes 1–2 were already covered by this suite.
+- **Versions.** `jetpack-compose-audit` → `4.3.0`. `compose-agent` unchanged at `4.2.1`.
 
 ### 4.2.1 — 2026-06-29
 
