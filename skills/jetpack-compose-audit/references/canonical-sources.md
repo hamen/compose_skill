@@ -32,7 +32,7 @@ These ground:
 - `derivedStateOf`
 - deferred state reads
 - lambda modifiers
-- backwards writes
+- backwards writes, cross-phase back-writes (layout → composition), snapshot-collection self-invalidation
 - stability annotations (`@Stable`, `@Immutable`), `kotlinx.collections.immutable`, `compose_compiler_config.conf`
 - Strong Skipping Mode (default since Kotlin 2.0.20), `@NonSkippableComposable`, `@DontMemoize`
 - Compose Compiler reports / metrics as the primary diagnostic for skippability and stability

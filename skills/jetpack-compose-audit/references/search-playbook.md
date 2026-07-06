@@ -340,6 +340,8 @@ Do not open a new score category for Nav3. If the project has no Nav2 code at al
 - scroll or animation state read high in the tree
 - fast-changing values passed to non-lambda modifiers when a layout/draw-phase alternative exists
 - backwards writes — *writing to state that has already been read in the same composition body* (this is the precise definition; reading after writing is fine)
+- cross-phase back-writes — a **layout-phase write into state an earlier composition read**, re-invalidating it: a layout callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) writes a `mutableStateOf` / `mutableIntStateOf` that a **sibling reads in composition** → measure → write → recompose loop, often per-frame during resize/scroll. This is axis 3 proper (a later phase feeding an earlier one). See the heuristic below
+- composition-phase self-invalidation — a **`SnapshotStateMap` / `SnapshotStateList` mutated inside a `@Composable` body** (`putAll`, `put`, `add`, `addAll`, `remove`, `clear`, `[k] =`, `+=`, `-=`) that the same composition also reads. This is *not* cross-phase — the write and read are both in composition; it is a close cousin of the same-body backwards-write rule above. Score it **once**: if the body reads the collection and *then* mutates it, the existing backwards-write rule already covers it — flag it here only when the mutation-then-read / self-feeding shape would slip past that rule's "already read" wording
 - `mutableStateOf<Int>` / `<Long>` / `<Float>` / `<Double>` — the typed factories avoid boxing
 - raw `List`/`Map`/`Set` parameters on widely reused composables when `kotlinx.collections.immutable` is already a dependency
 - `@NonSkippableComposable` / `@DontMemoize` without a justifying comment
@@ -433,6 +435,20 @@ Positive signals to reward:
 - `remember { Animatable(...) }` + `LaunchedEffect(target) { animatable.animateTo(target) }` pattern
 - `AnimatedContent(targetState, label = "...")` when the call site needs custom enter/exit or size-aware transitions; `Crossfade` for standard fade-only swaps
 - reusable animated components exposing `animationSpec: AnimationSpec<T>` when callers need timing control, and using meaningful labels on tooling-visible animations
+
+### Cross-Phase Back-Write & Composition Self-Invalidation Heuristic
+
+Two related re-invalidation smells. Only shape 1 is truly cross-phase (axis 3); shape 2 stays within composition and overlaps the same-body backwards-write rule — keep them distinct so the report neither mislabels nor double-deducts. No single regex proves either; gather candidates, then read each call site.
+
+1. **Layout → composition writes (cross-phase, axis 3).** Layout runs after composition, so a layout-phase write into state read in composition re-runs composition. List the layout callbacks: `rg -n 'onSizeChanged|onGloballyPositioned|onPlaced' -g '*.kt'`. For each hit, check whether its lambda **writes** a state holder (`something = ...`, `state.value = ...`, `.intValue =`) rather than only reading, then confirm that written state is **read during composition** — by a sibling composable, a parent, or the same subtree (not only inside a deferred lambda modifier). It is legitimate only when the value is read exclusively in a later layout/draw pass (e.g. fed straight into `Modifier.layout { }` / `Modifier.drawBehind { }`); flag it when a composition-phase read exists.
+2. **Snapshot-collection self-invalidation (composition phase, *not* cross-phase).** First find snapshot collections: `rg -n 'mutableStateListOf|mutableStateMapOf|toMutableStateList|toMutableStateMap|SnapshotStateList|SnapshotStateMap' -g '*.kt'` (the `to*` builders create the same types without naming the factory). Then, **only inside the files that hit above** (a global mutation search is pure noise — every `list.add(...)` in the repo matches), read each usage and flag a mutation — `putAll` / `put` / `add` / `addAll` / `remove` / `clear` / `[k] =` / `+=` / `-=` — that sits **directly in a `@Composable` body** (not in an event handler, `LaunchedEffect`, or state holder) while the same composition also reads the collection. Deduct **once**: prefer the same-body backwards-write rule when the body reads before it mutates; use this shape for the mutate-then-read / self-feeding case that the "already read" wording would miss.
+
+Severity: **Should-fix**, promoted to a **Critical Finding** when the loop is per-frame (resize/scroll/animation-driven) or spans reused lazy items. For shape 1, cite the writer's `file:line` and the reader's `file:line`. Docs: [phases](https://developer.android.com/develop/ui/compose/performance/phases), [bestpractices](https://developer.android.com/develop/ui/compose/performance/bestpractices).
+
+Positive signals to reward:
+
+- a measured size / position written from a layout callback is consumed only in `Modifier.layout { }` / `Modifier.offset { }` / `Modifier.drawBehind { }` (stays in layout/draw, never re-enters composition)
+- `SubcomposeLayout` / `BoxWithConstraints` used where a child genuinely needs parent constraints, instead of round-tripping measured size through composition-read state
 
 ### Strong Skipping Mode Check
 
