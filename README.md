@@ -15,7 +15,7 @@
 
 **`compose-agent` 4.3.1 · 2026-07-06** — Authoring guidance so the coding-agent skill *warns while you write*: **Never Back-Write Across Phases** (layout callbacks / snapshot-collection mutation feeding composition) and **Optimizations That Do Nothing** (the false leads). The 4.3.0 audit catches these after the fact; 4.3.1 stops you writing them.
 
-**`jetpack-compose-audit` 4.3.0 · 2026-07-06** — Cross-phase back-write detection (axis 3: layout callbacks writing state read in composition), a related composition-phase self-invalidation check (snapshot collections mutated in a composable body), and a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0). `compose-agent` stays at `4.2.1`.
+**`jetpack-compose-audit` 4.3.0 · 2026-07-06** — Cross-phase back-write detection (axis 3: layout callbacks writing state read in composition), a related composition-phase self-invalidation check (snapshot collections mutated in a composable body), and a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0). (Authoring-side guidance in `compose-agent` followed in 4.3.1.)
 
 **Version 4.2.0 · 2026-06-17** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Validated through multi-agent cross-review. Both skills ship as `4.2.0`.
 
@@ -37,8 +37,9 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 
 - **`performance.md`.** New **Never Back-Write Across Phases** section (layout callbacks writing composition-read state; snapshot-collection mutation in a `@Composable` body, with good/bad Kotlin) and **Optimizations That Do Nothing** (the false leads). Grep triggers extended for `onSizeChanged` / `onGloballyPositioned` / `onPlaced` and snapshot-collection mutation.
 - **`SKILL.md`.** New Core Instruction, review-checklist line, and Review Process step 4 names cross-phase back-writes.
+- **Suite-wide Strong Skipping fix.** Removed a false-lead carve-out ("...unless the lambda captures an unstable value") that contradicted the [official Strong Skipping docs](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping) — SSM memoizes lambdas even with unstable captures, so the only real exception is SSM-off / `@DontMemoize`.
 - **Why.** Closes the drift the 4.3.0 cross-review flagged: the audit caught these after the fact, but the authoring skill stayed silent while writing the code. Now it warns up front.
-- **Versions.** `compose-agent` → `4.3.1`. `jetpack-compose-audit` unchanged at `4.3.0`.
+- **Versions.** `compose-agent` → `4.3.1`, `jetpack-compose-audit` → `4.3.1`.
 
 For release detail, see [`docs/release-notes-4.3.1.md`](./docs/release-notes-4.3.1.md).
 

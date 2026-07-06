@@ -70,23 +70,30 @@ Same idea for `rotate` and `scale` via `graphicsLayer`. `padding` does **not** h
 
 ## Never Back-Write Across Phases
 
-The reverse of deferring reads. Layout runs after composition and draw runs after layout, so if a **later phase writes state an earlier phase read**, the earlier phase re-runs — a feedback loop, often once per frame. Two shapes to avoid:
+The reverse of deferring reads: never write state you have already read in the same pass, and never let a *later* phase write state an *earlier* phase read. Two shapes to avoid — the first is truly cross-phase, the second is composition-phase self-invalidation; the fix discipline is the same.
 
-**Layout → composition.** A layout callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) that writes state a sibling reads in composition:
+**Layout → composition (cross-phase).** A layout callback (`onSizeChanged`, `onGloballyPositioned`, `onPlaced`) that writes state a sibling reads in composition — measure runs after composition, so the write re-runs composition, often once per frame:
 
 ```kotlin
-// Bad — measure → write → recompose loop
+// Bad — measure → write → recompose loop; value's offset is read in composition
 var labelWidth by remember { mutableIntStateOf(0) }
-Text(label, Modifier.onSizeChanged { labelWidth = it.width }) // layout writes
-Spacer(Modifier.width(with(LocalDensity.current) { labelWidth.toDp() })) // composition reads → recomposes
+Box {
+    Text(label, Modifier.onSizeChanged { labelWidth = it.width }) // layout writes
+    Text(value, Modifier.offset { IntOffset(labelWidth, 0) }.padding(start = 8.dp)) // was: composition read
+}
 
-// Good — keep the measured value in the layout phase
-Layout(content = { Text(label); Text(value) }) { measurables, constraints -> /* place value using label's measured width */ }
+// Good — one Layout measures label and places value after it; no composition-read hop
+Layout(content = { Text(label); Text(value) }) { (labelM, valueM), constraints ->
+    val l = labelM.measure(constraints); val v = valueM.measure(constraints)
+    layout(constraints.maxWidth, maxOf(l.height, v.height)) {
+        l.place(0, 0); v.place(l.width + 8.dp.roundToPx(), 0) // value placed using label's measured width, all in layout
+    }
+}
 ```
 
 If a child genuinely needs the parent's constraints, `BoxWithConstraints` / `SubcomposeLayout` is fine — that exposes *parent constraints*, not a sibling's measured size. Do not round-trip a measured size through composition-read state.
 
-**Mutating a snapshot collection in the composition body.** A `mutableStateListOf` / `mutableStateMapOf` (or `toMutableStateList()` / `toMutableStateMap()`) mutated (`add`, `put`, `putAll`, `clear`, `[k] =`, `+=`) inside a `@Composable` body that also reads it invalidates the composition that produced it:
+**Mutating a snapshot collection in the composition body (composition-phase self-invalidation — not cross-phase).** A `mutableStateListOf` / `mutableStateMapOf` (or `toMutableStateList()` / `toMutableStateMap()`) mutated (`add`, `put`, `putAll`, `clear`, `[k] =`, `+=`) inside a `@Composable` body that also reads it invalidates the composition that produced it:
 
 ```kotlin
 // Bad — mutate-and-read in the same composition
@@ -105,7 +112,7 @@ Mutate snapshot state from an event handler, `LaunchedEffect`, or a state holder
 These *look* like recomposition fixes but change nothing. Don't write them, and don't leave them behind as "optimized":
 
 - `remember(index) { isFirstRow(index) }` — a pure, cheap function of its own key. Same inputs, no skipping benefit; inline it. Only `remember` genuinely expensive work keyed on real inputs.
-- Wrapping a callback in `remember` to "stabilize" it **under Strong Skipping** — the compiler already auto-memoizes lambdas passed to composables. That lever only matters SSM-off, on `@NonSkippableComposable` / `@DontMemoize` paths, or when the lambda captures an unstable value.
+- Wrapping a callback in `remember` to "stabilize" it **under Strong Skipping** — the compiler already auto-memoizes lambdas passed to composables, *including those with unstable captures*. That lever only matters SSM-off or on a `@DontMemoize` / `@NonSkippableComposable` path.
 - Identity-caching a read-only derived map to preserve reference equality — `remember(keys)` on the inputs is enough and won't serve stale data.
 - Hoisting state up without stabilizing the values passed back down — a fresh unstable instance each recomposition still defeats skipping on the child.
 
@@ -211,7 +218,7 @@ Shipping a baseline profile is still one of the biggest end-user performance win
 - `items\(\s*\w+\s*\)\s*\{` in a `Lazy*` without `key =` — probably missing keys
 - `animateItemPlacement\(` — migrate to `animateItem()`
 - `onSizeChanged|onGloballyPositioned|onPlaced` — check the lambda writes state read in composition (layout → composition back-write)
-- `mutableStateListOf|mutableStateMapOf|toMutableStateList|toMutableStateMap` — check for `add`/`put`/`clear`/`[k] =`/`+=` mutation inside a `@Composable` body that also reads it
+- `mutableStateListOf|mutableStateMapOf|toMutableStateList|toMutableStateMap|SnapshotStateList|SnapshotStateMap` — check for `add`/`addAll`/`put`/`putAll`/`remove`/`clear`/`[k] =`/`+=`/`-=` mutation inside a `@Composable` body that also reads it
 - `@NonSkippableComposable` / `@DontMemoize` — demand justification
 
 ## Primary Sources

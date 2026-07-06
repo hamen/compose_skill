@@ -30,7 +30,7 @@ The guard verifies against runtime recomposition counts / compiler reports rathe
 
 ## Evals
 
-`evals/evals.json` cases 12–14 lock in the new behavior: cross-phase layout→composition back-write (12), false leads that must not be credited or suggested under SSM (13), and composition-phase snapshot self-invalidation (14). Audit-only — `compose-agent` has no cross-phase / false-lead guidance yet (tracked as follow-up).
+`evals/evals.json` cases 12–14 lock in the new behavior: cross-phase layout→composition back-write (12), false leads that must not be credited or suggested under SSM (13), and composition-phase snapshot self-invalidation (14). Audit-only at 4.3.0; `compose-agent` gained matching authoring guidance in 4.3.1.
 
 ## Attribution
 

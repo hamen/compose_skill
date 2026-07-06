@@ -1,6 +1,6 @@
 # Release notes — 4.3.1 (2026-07-06)
 
-**`compose-agent` only.** `jetpack-compose-audit` unchanged at `4.3.0`.
+**`compose-agent` authoring guidance + a suite-wide Strong Skipping correctness fix** (`jetpack-compose-audit` patched too).
 
 Follow-up to 4.3.0. That release taught the **audit** to catch cross-phase back-writes and no-op "recomposition fixes"; this release teaches the **authoring** skill to avoid writing them in the first place. It closes the drift the 4.3.0 cross-review flagged: a `compose-agent` review could still recommend a pattern the audit rejects.
 
@@ -18,10 +18,14 @@ Follow-up to 4.3.0. That release taught the **audit** to catch cross-phase back-
 - Review Process step 4 now names cross-phase back-writes.
 - New review-checklist line: does any layout callback or snapshot-collection mutation write state read back in composition?
 
+## `jetpack-compose-audit` — Strong Skipping correctness fix
+
+The 4.3.0 false-lead guard said manual callback `remember` could still matter "when the lambda captures an unstable value." That contradicts the official [Strong Skipping docs](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping): SSM memoizes lambdas **even with unstable captures**, so the carve-out could still bless the exact no-op the guard forbids. Removed from `scoring.md` in all four places; the only remaining exception is SSM-off or a `@DontMemoize` / `@NonSkippableComposable` path.
+
 ## Attribution
 
 Continues the 4.3.0 adaptation from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) `compose-recomposition-performance` (Apache-2.0), cited against `developer.android.com`.
 
 ## Versions
 
-`compose-agent` → **4.3.1** (SKILL + both `plugin.json`). `jetpack-compose-audit` stays at `4.3.0`.
+`compose-agent` → **4.3.1** and `jetpack-compose-audit` → **4.3.1** (SKILL + both `plugin.json` each).
