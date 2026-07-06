@@ -1,6 +1,6 @@
 {
   "skill_name": "jetpack-compose-audit",
-  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x, plus Paging 3 in Compose list/load-state behavior added in 4.2.0 (cases 10-11). These are the audit/review acceptance criteria the skill must preserve; they also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
+  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x, plus Paging 3 in Compose list/load-state behavior added in 4.2.0 (cases 10-11), plus cross-phase back-write detection and the false-lead scoring guard added in 4.3.0 (cases 12-13). These are the audit/review acceptance criteria the skill must preserve; they also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
   "evals": [
     {
       "id": 0,
@@ -146,6 +146,32 @@
         "Flag the `refresh is LoadState.Error` branch with no `itemCount` guard — a transient failure replaces an already-loaded feed with a full-screen error.",
         "Recommend gating full-screen error on `itemCount == 0` and surfacing refresh errors that arrive with content as a snackbar / inline retry.",
         "Credit the correct stable `itemKey` already present instead of re-flagging it."
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Audit this Compose layout for recomposition cost:\n@Composable fun PriceRow(label: String, price: String) {\n    var labelWidth by remember { mutableIntStateOf(0) }\n    Row {\n        Text(label, Modifier.onSizeChanged { labelWidth = it.width })\n        Spacer(Modifier.width(with(LocalDensity.current) { labelWidth.toDp() }))\n        Text(price)\n    }\n}",
+      "expected_output": "An audit flagging the cross-phase back-write: onSizeChanged (layout) writes labelWidth, which the Spacer reads in composition, forcing measure -> write -> recompose. Recommends consuming the measured width in the layout/draw phase (Modifier.layout {} / a custom Layout / SubcomposeLayout) instead of round-tripping through composition-read state.",
+      "files": [],
+      "expectations": [
+        "Flag `onSizeChanged` writing `labelWidth` that is read in composition (by the `Spacer`) as a cross-phase (axis 3) back-write, not a same-body backwards write.",
+        "Identify both sides: the layout-phase writer (`onSizeChanged`) and the composition-phase reader (`labelWidth.toDp()` in the `Spacer`).",
+        "Recommend keeping the measured value in layout/draw — `Modifier.layout { }`, a custom `Layout`, or `SubcomposeLayout` / `BoxWithConstraints` — rather than a composition-read state hop.",
+        "Do not misclassify it as a stability / unstable-parameter problem.",
+        "Treat it as Critical if the row is a reused lazy item or the size changes per frame."
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "This screen targets Kotlin 2.1 / Compose Compiler with Strong Skipping on by default. A teammate says they 'optimized recomposition' with the two changes below. Audit whether these are real wins and whether to keep them:\n@Composable fun Rows(items: List<Row>, onOpen: (Row) -> Unit) {\n    val stableOnOpen = remember(onOpen) { onOpen }\n    LazyColumn { itemsIndexed(items) { index, row ->\n        val isFirst = remember(index) { index == 0 }\n        RowItem(row, isFirst, onClick = { stableOnOpen(row) })\n    } }\n}",
+      "expected_output": "An audit that does not credit either change as a recomposition win under Strong Skipping: SSM already auto-memoizes lambdas so wrapping onOpen in remember is a no-op, and remember(index) around the pure `index == 0` saves no work. Neither should appear in Prioritized Fixes; any real advice points at runtime recomposition counts / compiler reports.",
+      "files": [],
+      "expectations": [
+        "Do not credit `remember(onOpen) { onOpen }` as a stabilization win — under Strong Skipping lambdas are auto-memoized, so it is a no-op.",
+        "Do not credit `remember(index) { index == 0 }` — it wraps a pure, cheap expression keyed on its own input and saves nothing.",
+        "Do not list either pattern in Prioritized Fixes, and do not deduct for removing them.",
+        "If recommending anything, cite runtime recomposition counts or compiler reports as proof rather than the presence of the pattern.",
+        "Note that the `remember`-the-callback advice only applies with Strong Skipping OFF or on `@NonSkippableComposable` / `@DontMemoize` paths."
       ]
     }
   ]

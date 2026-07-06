@@ -206,7 +206,7 @@ Focus on:
 - paging list keys and `LazyPagingItems` misuse when `collectAsLazyPagingItems` is present
 - bad state-read timing
 - unstable or overly broad reads
-- backwards writes
+- backwards writes, including cross-phase back-writes (layout callback writing state read in composition) and snapshot-collection self-invalidation in a composable body
 - animation phase correctness (per-frame values deferred to layout/draw via lambda modifiers, `Animatable` held in `remember`, `rememberInfiniteTransition` scoped so it stops offscreen)
 - obvious release-performance hygiene where visible
 
