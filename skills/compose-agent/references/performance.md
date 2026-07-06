@@ -15,7 +15,7 @@ On Kotlin `2.0.20+` with Compose Compiler `1.5.4+`, **Strong Skipping Mode is on
 What still defeats skipping under SSM:
 
 1. **Fresh collection / fresh object literals in the call site.** `listOf(...)`, `mapOf(...)`, `MyUiModel(...)` built at the call site recompute a new identity on every recomposition. Structural equality may save you, but construction churn still costs.
-2. **Object literals and lambda literals inside composable bodies.** Lambdas that capture state read inside the composable are automatically remembered by the compiler. Lambdas that capture nothing are singletons. Lambdas in between — capturing a value — are worth double-checking; the compiler memoizes most of them, but opaque call sites (e.g. generics) can still churn.
+2. **Fresh non-lambda objects built in the composable body** — a `MyUiModel(...)` or wrapper allocated inline and passed down (an extension of 1). **Not lambdas:** SSM wraps every lambda passed to a composable in `remember`, *including ones with unstable captures*, so a plain callback does not defeat skipping — don't manually `remember` callbacks to "fix" recomposition (see *Lambdas In Composables* and *Optimizations That Do Nothing*). Manual remembering only matters SSM-off or on a `@DontMemoize` / `@NonSkippableComposable` path.
 3. **Broken `equals()` on parameters.** If a data class overrides `equals()` incorrectly or is a plain class without `equals`, skipping fails for the wrong reason.
 4. **Explicit `@NonSkippableComposable` / `@DontMemoize`** on hot paths.
 
@@ -86,8 +86,9 @@ Box {
 // Good — one Layout measures label and places value after it; no composition-read hop
 Layout(content = { Text(label); Text(value) }) { (labelM, valueM), constraints ->
     val l = labelM.measure(constraints); val v = valueM.measure(constraints)
+    val gap = 8.dp.roundToPx() // MeasureScope is a Density
     layout(constraints.maxWidth, maxOf(l.height, v.height)) {
-        l.place(0, 0); v.place(l.width + 8.dp.roundToPx(), 0) // value placed using label's measured width, all in layout
+        l.place(0, 0); v.place(l.width + gap, 0) // value placed using label's measured width, all in layout
     }
 }
 ```
@@ -158,7 +159,7 @@ Same for `mutableLongStateOf`, `mutableFloatStateOf`, `mutableDoubleStateOf`. Th
 
 ## Lambdas In Composables
 
-With SSM on, Compose wraps lambdas in `remember` for you — **all** of them, including those with unstable captures. You do **not** need to manually wrap callbacks in `remember { { ... } }`. That pattern is legacy and adds noise (see *Optimizations That Do Nothing*).
+With SSM on, Compose wraps **every lambda passed to a composable** in `remember` for you — including those with unstable captures. You do **not** need to manually wrap callbacks in `remember { { ... } }`. That pattern is legacy and adds noise (see *Optimizations That Do Nothing*).
 
 Two cases where manual remembering still matters:
 

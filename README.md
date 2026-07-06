@@ -379,6 +379,7 @@ compose-agent: find deprecated API in this module.
 5. If it collects a `Flow`, is it `collectAsStateWithLifecycle()`?
 6. Is the parameter order data → `modifier` → other → content slot last?
 7. If it animates, is the API declarative first, remembered where needed, lifecycle-aware, and phase-correct?
+8. Does any layout callback (`onSizeChanged` / `onGloballyPositioned` / `onPlaced`) or snapshot-collection mutation write state that is read back in composition? (cross-phase back-write / self-invalidation)
 
 Any "no" without a reason → fixed before the code comes back. No extra prompt needed — loading the skill is enough.
 

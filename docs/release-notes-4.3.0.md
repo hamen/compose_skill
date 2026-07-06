@@ -24,7 +24,7 @@ A guard table in `scoring.md` Performance: plausible "recomposition fixes" that 
 - Identity/instance caches for read-only derived maps (use `remember(keys)`).
 - Layout modifiers on both the measured and the sibling row (the sibling still reads size in composition).
 - `assertRecompositionCount(Exactly(1))` forced on both rows when one correctly recomposes 0 times.
-- Under **Strong Skipping**, manually `remember`-ing a callback the compiler already auto-memoizes — that lever only applies SSM-off, on `@NonSkippableComposable` / `@DontMemoize` paths, or when the lambda captures an unstable value.
+- Under **Strong Skipping**, manually `remember`-ing a callback the compiler already auto-memoizes — that lever only applies SSM-off or on `@NonSkippableComposable` / `@DontMemoize` paths. (Historical note: 4.3.0 also listed "or when the lambda captures an unstable value" — **corrected in 4.3.1**; SSM memoizes lambdas even with unstable captures.)
 
 The guard verifies against runtime recomposition counts / compiler reports rather than the presence of a pattern.
 
