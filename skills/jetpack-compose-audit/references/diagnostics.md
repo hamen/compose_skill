@@ -190,6 +190,6 @@ When you arrive at a Compose repo, run these in order before scoring:
 4. `rg -n 'isMinifyEnabled' -g '*.gradle*'` — release hygiene.
 5. Run Step 4 of SKILL.md — the init script generates compiler reports automatically. If the build fails, read any existing `composeCompiler { reportsDestination ... }` output the project already produces; otherwise note the fallback in the report.
 6. `rg -l 'baselineProfile|ProfileInstaller' -g '*.gradle*' -g '*.kt'` — baseline-profile presence.
-7. `rg -n 'onSizeChanged|onGloballyPositioned|onPlaced' -g '*.kt'` and `rg -n 'mutableStateListOf|mutableStateMapOf|SnapshotStateList|SnapshotStateMap' -g '*.kt'` — cross-phase back-write candidates (layout callback writing composition-read state) and snapshot-collection self-invalidation candidates. Read each hit before scoring — scope any mutation search to just these files, not the whole repo; see the cross-phase / self-invalidation heuristic in the search playbook.
+7. `rg -n 'onSizeChanged|onGloballyPositioned|onPlaced' -g '*.kt'` and `rg -n 'mutableStateListOf|mutableStateMapOf|toMutableStateList|toMutableStateMap|SnapshotStateList|SnapshotStateMap' -g '*.kt'` — cross-phase back-write candidates (layout callback writing composition-read state) and snapshot-collection self-invalidation candidates. Read each hit before scoring — scope any mutation search to just these files, not the whole repo; see the cross-phase / self-invalidation heuristic in the search playbook.
 
 These seven checks tell you what kind of evidence is available before any rubric-level reading.

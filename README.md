@@ -39,6 +39,8 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 - **Attribution.** Axis 3 and the false-lead cases adapted (reworded, re-cited against `developer.android.com`) from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) `compose-recomposition-performance` (Apache-2.0). Axes 1–2 were already covered by this suite.
 - **Versions.** `jetpack-compose-audit` → `4.3.0`. `compose-agent` unchanged at `4.2.1`.
 
+For release detail, see [`docs/release-notes-4.3.0.md`](./docs/release-notes-4.3.0.md). Full history: [CHANGELOG.md](./CHANGELOG.md).
+
 ### 4.2.1 — 2026-06-29
 
 **`compose-agent` — Navigation 3 decision table.**

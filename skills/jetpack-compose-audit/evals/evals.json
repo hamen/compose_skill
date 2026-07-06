@@ -173,6 +173,19 @@
         "If recommending anything, cite runtime recomposition counts or compiler reports as proof rather than the presence of the pattern.",
         "Note that the `remember`-the-callback advice only applies with Strong Skipping OFF or on `@NonSkippableComposable` / `@DontMemoize` paths."
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "Audit this overlay for recomposition cost:\n@Composable fun Overlay(rows: List<Row>) {\n    val heights = remember { mutableStateMapOf<String, Int>() }\n    rows.forEach { heights[it.id] = it.baseHeight }\n    Column {\n        rows.forEach { row ->\n            Box(Modifier.height((heights[row.id] ?: 0).dp)) { RowContent(row) }\n        }\n    }\n}",
+      "expected_output": "An audit flagging the mutableStateMapOf mutated in the composable body (heights[it.id] = ...) that the same composition then reads, as composition-phase self-invalidation — scored once, not double-counted with the same-body backwards-write rule, and explicitly not a cross-phase (axis 3) back-write. Recommends deriving from params (remember(rows) { ... }) or moving the mutation into a state holder, rather than mutating snapshot state during composition.",
+      "files": [],
+      "expectations": [
+        "Flag the `mutableStateMapOf` mutation (`heights[it.id] = ...`) in the composable body that the same composition reads as composition-phase self-invalidation.",
+        "Do NOT label it a cross-phase (axis 3) back-write — both the write and the read happen in composition.",
+        "Score it once — do not additionally deduct under the same-body backwards-write rule for the same code.",
+        "Recommend deriving the map from params (`remember(rows) { ... }`) or moving the mutation to a state holder / event, not mutating snapshot state during composition.",
+        "Do not flag this as an unstable-parameter / stability problem."
+      ]
     }
   ]
 }
