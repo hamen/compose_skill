@@ -20,9 +20,9 @@ Follow-up to 4.3.0. That release taught the **audit** to catch cross-phase back-
 
 ## `jetpack-compose-audit` — Strong Skipping correctness fix
 
-The 4.3.0 false-lead guard said manual callback `remember` could still matter "when the lambda captures an unstable value." That contradicts the official [Strong Skipping docs](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping): SSM memoizes lambdas **even with unstable captures**, so the carve-out could still bless the exact no-op the guard forbids. Removed from `scoring.md` in all four places; the only remaining exception is SSM-off or a `@DontMemoize` / `@NonSkippableComposable` path.
+The 4.3.0 false-lead guard said manual callback `remember` could still matter "when the lambda captures an unstable value." That contradicts the official [Strong Skipping docs](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping): SSM memoizes lambdas **even with unstable captures**, so the carve-out could still bless the exact no-op the guard forbids. Removed from `scoring.md`; the only remaining exception is SSM-off or a `@DontMemoize` path. (4.3.1 initially still paired `@NonSkippableComposable` here — **corrected in 4.3.2**: that annotation opts a composable out of skipping, not lambda memoization.)
 
-The same correction lands in `compose-agent/performance.md`: the *Strong Skipping baseline*, *Lambdas In Composables*, and *Optimizations That Do Nothing* sections now agree. The old "lambdas passed across module boundaries to generic composables can miss memoization" bullet was dropped — under SSM, lambda memoization happens at the caller's compilation regardless of the callee's module/generics, so that case is obsolete; the real exceptions are SSM-off / `@DontMemoize` / `@NonSkippableComposable`.
+The same correction lands in `compose-agent/performance.md`: the *Strong Skipping baseline*, *Lambdas In Composables*, and *Optimizations That Do Nothing* sections now agree. The old "lambdas passed across module boundaries to generic composables can miss memoization" bullet was dropped — under SSM, lambda memoization happens at the caller's compilation regardless of the callee's module/generics, so that case is obsolete; the real exceptions are SSM-off / `@DontMemoize`.
 
 ## Eval coverage
 
