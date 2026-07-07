@@ -13,7 +13,7 @@
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**`compose-agent` 4.3.2 · 2026-07-07** — Authoring guidance so the coding-agent skill *warns while you write*: **Never Back-Write Across Phases** (layout callbacks / snapshot-collection mutation feeding composition) and **Optimizations That Do Nothing** (the false leads). The 4.3.0 audit catches these after the fact; 4.3.1 stops you writing them.
+**`compose-agent` 4.4.0 · 2026-07-07** — Authoring guidance so the coding-agent skill *warns while you write* — **Never Back-Write Across Phases** and **Optimizations That Do Nothing** — now backed by its own [write-mode acceptance evals](./skills/compose-agent/evals/evals.json) (CI-enforced to track the audit's rules). The 4.3.0 audit catches these after the fact; `compose-agent` stops you writing them.
 
 **`jetpack-compose-audit` 4.3.2 · 2026-07-07** — Cross-phase back-write detection (axis 3: layout callbacks writing state read in composition), a related composition-phase self-invalidation check (snapshot collections mutated in a composable body), and a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0).
 
@@ -30,6 +30,12 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.4.0 — 2026-07-07
+
+**`compose-agent` — write-mode acceptance evals.** New [`skills/compose-agent/evals/evals.json`](./skills/compose-agent/evals/evals.json): five cases that ask the skill to *write* Compose and grade the output (cross-phase back-write avoidance, Strong Skipping false leads, snapshot self-invalidation, phase-correct reads, lifecycle-aware Flow collection). `bin/ci` now validates every eval suite's structure and asserts the compose-agent cases keep covering the 4.3.x authoring rules — so the authoring path can't drift from the audit path. `compose-agent` → `4.4.0`; `jetpack-compose-audit` stays `4.3.2`.
+
+For release detail, see [`docs/release-notes-4.4.0.md`](./docs/release-notes-4.4.0.md).
 
 ### 4.3.2 — 2026-07-07
 

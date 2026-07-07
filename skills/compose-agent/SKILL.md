@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 argument-hint: "[focus area, e.g. 'state', 'effects', 'navigation', 'paging', 'lifecycle', 'animation', 'testing', 'focus', 'kmp']"
 metadata:
   author: Ivan Morgillo
-  version: "4.3.2"
+  version: "4.4.0"
 ---
 
 # Compose Agent
@@ -177,6 +177,10 @@ If the user needs any of the above, narrow the scope and say so.
 - `references/animation.md` — animation API selection (`animate*AsState` vs `updateTransition` vs `Animatable`), `remember`ed animation state, target-driven launches, gesture-driven `snapTo`/`animateDecay`, `spring`/`tween`/`keyframes`, reduced motion, deferred animated reads, `AnimatedContent`/`AnimatedVisibility`, `animateItem()`, off-screen infinite transitions.
 - `references/paging.md` — Paging 3 in Compose: when to page vs plain lists, `collectAsLazyPagingItems`, stable `itemKey`, `LoadState` UI, pull-to-refresh, anti-patterns for paginated lazy lists.
 - `references/kotlin.md` — Kotlin coding conventions and Android Kotlin style the LLM keeps missing.
+
+## Acceptance Evals
+
+`evals/evals.json` holds write-mode acceptance cases — prompts that ask this skill to *write* Compose, plus the expectations the produced code must satisfy. Cases 0–2 mirror the `jetpack-compose-audit` scoring rules 1:1 (cross-phase back-writes, Strong Skipping false leads, snapshot self-invalidation) — `bin/ci` keeps them in lockstep so the authoring path can't drift from the audit path; cases 3–4 add foundational phase-correct reads and lifecycle-aware Flow collection. Run a model with this skill loaded against each prompt and check every expectation.
 
 ## Primary Sources
 

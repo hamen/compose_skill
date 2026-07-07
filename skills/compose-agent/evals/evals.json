@@ -1,0 +1,65 @@
+{
+  "skill_name": "compose-agent",
+  "description": "Write-mode acceptance evals for compose-agent. Unlike jetpack-compose-audit's evals (which grade an audit of existing code), these grade code the skill is asked to WRITE. Cases 0-2 are the write-mode mirror of jetpack-compose-audit/evals/evals.json cases 12-14 (cross-phase back-write, Strong Skipping false lead, snapshot self-invalidation) — same rules, opposite direction (write vs audit) — so the authoring path can't drift from the scoring path; cases 3-4 cover foundational phase/lifecycle rules that this skill enforces but the audit does not have dedicated cases for. Run a model with the skill loaded against each prompt and check the produced Compose satisfies every expectation.",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Write a Compose row that shows a `label` and, to its right, a `value` that starts exactly 8dp after the label ends — the value's left edge must track the label's actual measured width for any label length. Target Kotlin 2.1 with Strong Skipping on.",
+      "expected_output": "A single custom `Layout` (or `SubcomposeLayout`) that measures the label and places the value at `label.width + 8dp`, keeping the measured width inside the layout phase. It must NOT capture the label's width from `onSizeChanged` / `onGloballyPositioned` into a `mutableStateOf` / `mutableIntStateOf` that the value then reads in composition.",
+      "files": [],
+      "expectations": [
+        "Do not write the label's measured width from onSizeChanged / onGloballyPositioned / onPlaced into state that the value reads in composition (that is a cross-phase back-write: measure -> write -> recompose).",
+        "Solve it in the layout phase: a custom Layout, Modifier.layout { }, or SubcomposeLayout that measures the label and places the value at label.width + 8dp — these are correct.",
+        "Do not use BoxWithConstraints as a substitute for measuring the sibling label: it exposes the parent's constraints, not a sibling's measured size.",
+        "The value's horizontal offset is computed during measure/layout, not read from a composition-phase State."
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "This screen targets Kotlin 2.1 with Strong Skipping on by default. Make `RowItem` skip recomposition when unrelated screen state changes:\n@Composable fun Rows(items: List<Row>, onOpen: (Row) -> Unit) {\n    LazyColumn { itemsIndexed(items) { i, row ->\n        RowItem(row, isFirst = i == 0, onClick = { onOpen(row) })\n    } }\n}",
+      "expected_output": "Guidance/code that targets the real levers — `Row` being a stable type and `RowItem` restartable/skippable, stable list keys — and explicitly does NOT add ceremony that does nothing under Strong Skipping: no wrapping `onOpen`/`onClick` in `remember`, no `remember(i)` around `i == 0`.",
+      "files": [],
+      "expectations": [
+        "Do not wrap the onClick / onOpen lambda in remember to 'stabilize' it — under Strong Skipping the compiler already memoizes lambdas passed to composables (even with unstable captures).",
+        "Do not add remember(i) / remember(index) around the pure `i == 0` expression as a recomposition fix.",
+        "Point at real levers: Row as a stable type (data class with stable/immutable fields, no var), RowItem being skippable, and a stable key = on itemsIndexed.",
+        "Recommend verifying with Layout Inspector recomposition counts or Compose compiler reports rather than asserting a win from the pattern.",
+        "If the manual-remember lever is mentioned at all, it is correctly scoped to SSM-off or a @DontMemoize path — never presented as helping on the default Strong Skipping track."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write a composable `Legend(entries: List<Entry>)` that renders each entry as a colored dot plus its label, where each dot's color comes from a lookup keyed by `entry.id` built from `entries`.",
+      "expected_output": "A composable that derives the lookup as a plain `Map` with `remember(entries) { ... }` (or inline), reading it to render. It must NOT build the lookup by mutating a `mutableStateMapOf` / `mutableStateListOf` inside the composable body and reading it back in the same composition.",
+      "files": [],
+      "expectations": [
+        "Build the lookup with remember(entries) { entries.associate { it.id to it.color } } (or derive inline) — a plain immutable Map keyed on entry.id.",
+        "Do not mutate a mutableStateMapOf / mutableStateListOf (put / putAll / add / clear / [k] =) inside the composable body and read it in the same composition (composition-phase self-invalidation).",
+        "No snapshot-state writes happen during composition."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write a `Parent` composable that owns a scroll- or animation-driven `progress: Float` in 0f..1f and passes it to a `ProgressBar` child that fills that fraction of its width. Keep recomposition off the per-frame hot path. Target Strong Skipping.",
+      "expected_output": "Parent hoists/owns the progress; the fast-changing value reaches ProgressBar as a `() -> Float` provider or is read in the layout/draw phase (`Modifier.graphicsLayer { }`, `Modifier.drawBehind { }`, or `Modifier.layout { }`), so composition stays stable each frame.",
+      "files": [],
+      "expectations": [
+        "The per-frame progress is read in layout/draw (lambda modifier / graphicsLayer / drawBehind / layout) or passed as a () -> Float provider — not as a plain Float read in ProgressBar's composition.",
+        "ProgressBar does not recompose on every frame of the scroll/animation.",
+        "State is hoisted to Parent (or a state holder); if the solution is animation-driven, any Animatable is held in remember and driven from a LaunchedEffect (a scroll-driven solution may instead read LazyListState in a lambda modifier)."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write a `FeedScreen(viewModel: FeedViewModel)` that renders `viewModel.uiState: StateFlow<FeedUiState>` (a header plus a list of posts). Assume a normal, non-paged list.",
+      "expected_output": "Collects the StateFlow with `collectAsStateWithLifecycle()`, keeps the composable side-effect free in composition, forwards a `modifier` to the root, and hoists any UI state correctly.",
+      "files": [],
+      "expectations": [
+        "Collect the StateFlow with collectAsStateWithLifecycle(), not plain collectAsState().",
+        "No side effects (I/O, navigation, non-remembered mutation) run directly in the composition body.",
+        "FeedScreen takes modifier: Modifier = Modifier applied to the outermost layout, and parameter order is data -> modifier -> other.",
+        "Does not reach for collectAsLazyPagingItems() here — this is a plain StateFlow, not PagingData."
+      ]
+    }
+  ]
+}

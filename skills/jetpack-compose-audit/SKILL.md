@@ -364,3 +364,7 @@ For medium or large repositories:
 - `references/canonical-sources.md` — the official URLs every deduction must cite
 - `references/diagnostics.md` — copy-pasteable Gradle/code snippets for Compose Compiler reports, stability config, baseline profiles, and R8 checks
 - `scripts/compose-reports.init.gradle` — Gradle init script the skill injects via `--init-script` in Step 4 to generate compiler reports automatically
+
+## Acceptance Evals
+
+`evals/evals.json` holds acceptance cases that grade an *audit of existing code* — each `{prompt, expected_output, expectations}` is a snippet plus the findings the audit must produce. Cases 12–14 (cross-phase back-write, Strong Skipping false lead, snapshot self-invalidation) are mirrored, in the opposite direction, by `compose-agent`'s write-mode evals, so the scoring path and the authoring path stay in lockstep. Run a model against each prompt and check every expectation.
