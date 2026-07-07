@@ -2,6 +2,17 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.4.0 — 2026-07-07
+
+**`compose-agent` — write-mode acceptance evals.**
+
+Closes the last follow-up from the 4.3.1 cross-review: the authoring skill had no evals of its own, so its new rules were only exercised through the audit's acceptance cases.
+
+- **New suite.** `skills/compose-agent/evals/evals.json` — five write-mode cases that ask the skill to *write* Compose and grade the result. Cases 0–2 lock in the 4.3.x authoring rules (cross-phase back-write avoidance, Strong Skipping false-lead avoidance, snapshot self-invalidation avoidance); cases 3–4 cover phase-correct reads and lifecycle-aware Flow collection. Unlike the audit evals (which grade an audit of existing code), these grade generated code.
+- **CI enforcement.** `bin/ci` now structurally validates every `skills/<name>/evals/evals.json` (JSON, unique numeric ids, required fields, non-empty expectations) and asserts the compose-agent suite keeps covering the three 4.3.x authoring rules — so the authoring path can't silently drift from the audit scoring path.
+- **`SKILL.md`.** New *Acceptance Evals* section pointing at the suite.
+- **Versions.** `compose-agent` → `4.4.0`. `jetpack-compose-audit` unchanged at `4.3.2`.
+
 ### 4.3.2 — 2026-07-07
 
 **Patch — one missed Strong Skipping caveat.**

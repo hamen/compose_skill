@@ -162,6 +162,58 @@ const auditVersion = JSON.parse(readFileSync('skills/jetpack-compose-audit/.clau
 if (!auditSkill.includes(`**Skill version:** ${auditVersion}`)) {
   throw new Error('jetpack-compose-audit SKILL.md version does not match manifest version');
 }
+
+// Eval suites: structural validation for every skills/<name>/evals/evals.json.
+for (const evalFile of [...files].filter((file) => file.endsWith('/evals/evals.json'))) {
+  const skillName = evalFile.split('/')[1];
+  let suite;
+  try {
+    suite = JSON.parse(readFileSync(evalFile, 'utf8'));
+  } catch (error) {
+    throw new Error(`${evalFile} is not valid JSON: ${error.message}`);
+  }
+  if (suite.skill_name !== skillName) {
+    throw new Error(`${evalFile} skill_name must be "${skillName}", got "${suite.skill_name}"`);
+  }
+  if (!Array.isArray(suite.evals) || suite.evals.length === 0) {
+    throw new Error(`${evalFile} must have a non-empty "evals" array`);
+  }
+  const seenIds = new Set();
+  for (const item of suite.evals) {
+    if (typeof item.id !== 'number' || seenIds.has(item.id)) {
+      throw new Error(`${evalFile} eval ids must be unique numbers (offender: ${JSON.stringify(item.id)})`);
+    }
+    seenIds.add(item.id);
+    for (const field of ['prompt', 'expected_output']) {
+      if (typeof item[field] !== 'string' || !item[field].trim()) {
+        throw new Error(`${evalFile} eval ${item.id} is missing a non-empty "${field}"`);
+      }
+    }
+    if (!Array.isArray(item.files)) {
+      throw new Error(`${evalFile} eval ${item.id} must have a "files" array`);
+    }
+    if (!Array.isArray(item.expectations) || item.expectations.length === 0) {
+      throw new Error(`${evalFile} eval ${item.id} must have a non-empty "expectations" array`);
+    }
+  }
+}
+
+// compose-agent write-mode evals must keep pace with the 4.3.x authoring rules,
+// so the authoring path can't silently drift from the audit scoring path.
+const composeEvalsPath = 'skills/compose-agent/evals/evals.json';
+if (!files.has(composeEvalsPath)) {
+  throw new Error('compose-agent must ship write-mode evals at skills/compose-agent/evals/evals.json');
+}
+const composeEvalsText = readFileSync(composeEvalsPath, 'utf8');
+for (const [label, needle] of [
+  ['cross-phase back-write', /onSizeChanged|onGloballyPositioned|cross-phase/],
+  ['Strong Skipping false lead', /Strong Skipping[\s\S]*remember|remember[\s\S]*Strong Skipping/],
+  ['snapshot self-invalidation', /mutableStateMapOf|mutableStateListOf|self-invalidation/],
+]) {
+  if (!needle.test(composeEvalsText)) {
+    throw new Error(`compose-agent evals must cover the ${label} authoring rule`);
+  }
+}
 NODE
 
 if command -v claude >/dev/null 2>&1; then
