@@ -23,7 +23,8 @@
         "Do not wrap the onClick / onOpen lambda in remember to 'stabilize' it — under Strong Skipping the compiler already memoizes lambdas passed to composables (even with unstable captures).",
         "Do not add remember(i) / remember(index) around the pure `i == 0` expression as a recomposition fix.",
         "Point at real levers: Row as a stable type (data class with stable/immutable fields, no var), RowItem being skippable, and a stable key = on itemsIndexed.",
-        "Recommend verifying with Layout Inspector recomposition counts or Compose compiler reports rather than asserting a win from the pattern."
+        "Recommend verifying with Layout Inspector recomposition counts or Compose compiler reports rather than asserting a win from the pattern.",
+        "If the manual-remember lever is mentioned at all, it is correctly scoped to SSM-off or a @DontMemoize path — never presented as helping on the default Strong Skipping track."
       ]
     },
     {

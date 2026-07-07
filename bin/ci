@@ -210,32 +210,43 @@ const composeSuite = evalSuites.get('compose-agent');
 if (!composeSuite) {
   throw new Error('compose-agent must ship write-mode evals at skills/compose-agent/evals/evals.json');
 }
-// Each rule must be covered by its own DISTINCT case — so one case stuffed with all
-// three keywords can't fake coverage.
-const usedIds = new Set();
-for (const [label, needle] of [
+// The three 4.3.x authoring rules, each with the token that identifies its case.
+const authoringRules = [
   ['cross-phase back-write', /onSizeChanged|onGloballyPositioned|onPlaced|cross-phase/],
   ['Strong Skipping false lead', /Strong Skipping[\s\S]*memoiz|memoiz[\s\S]*Strong Skipping/i],
   ['snapshot self-invalidation', /mutableStateMapOf|mutableStateListOf|self-invalidation/],
-]) {
+];
+// Each rule must be covered by its own DISTINCT case — so one case stuffed with all
+// three keywords can't fake coverage.
+const usedIds = new Set();
+const matchedByRule = new Map();
+for (const [label, needle] of authoringRules) {
   const match = composeSuite.evals.find((item) => !usedIds.has(item.id) && needle.test(JSON.stringify(item)));
   if (!match) {
     throw new Error(`compose-agent evals must include a distinct case covering the ${label} authoring rule`);
   }
   usedIds.add(match.id);
+  matchedByRule.set(label, match);
 }
 // The Strong Skipping false-lead case must cover BOTH subcases: the auto-memoized
-// lambda AND the remember(index) pure-expression no-op.
-const falseLeadCase = composeSuite.evals.find((item) => /memoiz/i.test(JSON.stringify(item)));
-if (!falseLeadCase || !/remember\(index\)|remember\(i\)/.test(JSON.stringify(falseLeadCase))) {
+// lambda AND the remember(index) pure-expression no-op. Checked on the same case the
+// Strong Skipping rule matched above, not a fresh lookup.
+const falseLeadCase = matchedByRule.get('Strong Skipping false lead');
+if (!/remember\(index\)|remember\(i\)/.test(JSON.stringify(falseLeadCase))) {
   throw new Error('compose-agent Strong Skipping false-lead case must cover both the auto-memoized-lambda and the remember(index) pure-expression subcases');
 }
-// Bidirectional lockstep: the audit must keep the cases (12-14) that these mirror.
+// Bidirectional lockstep: the audit must keep cases 12-14 AND they must still cover
+// the same three rules (an id alone is not enough).
 const auditSuite = evalSuites.get('jetpack-compose-audit');
 if (auditSuite) {
-  for (const requiredId of [12, 13, 14]) {
-    if (!auditSuite.evals.some((item) => item.id === requiredId)) {
-      throw new Error(`jetpack-compose-audit evals must retain case ${requiredId} (the audit side of the compose-agent write-mode mirror)`);
+  const auditMirror = [[12, authoringRules[0]], [13, authoringRules[1]], [14, authoringRules[2]]];
+  for (const [id, [label, needle]] of auditMirror) {
+    const auditCase = auditSuite.evals.find((item) => item.id === id);
+    if (!auditCase) {
+      throw new Error(`jetpack-compose-audit evals must retain case ${id} (the audit side of the compose-agent write-mode mirror)`);
+    }
+    if (!needle.test(JSON.stringify(auditCase))) {
+      throw new Error(`jetpack-compose-audit case ${id} must still cover the ${label} rule (mirror of compose-agent write-mode evals)`);
     }
   }
 }
