@@ -164,6 +164,7 @@ if (!auditSkill.includes(`**Skill version:** ${auditVersion}`)) {
 }
 
 // Eval suites: structural validation for every skills/<name>/evals/evals.json.
+const evalSuites = new Map();
 for (const evalFile of [...files].filter((file) => file.endsWith('/evals/evals.json'))) {
   const skillName = evalFile.split('/')[1];
   let suite;
@@ -195,23 +196,27 @@ for (const evalFile of [...files].filter((file) => file.endsWith('/evals/evals.j
     if (!Array.isArray(item.expectations) || item.expectations.length === 0) {
       throw new Error(`${evalFile} eval ${item.id} must have a non-empty "expectations" array`);
     }
+    if (!item.expectations.every((expectation) => typeof expectation === 'string' && expectation.trim())) {
+      throw new Error(`${evalFile} eval ${item.id} expectations must all be non-empty strings`);
+    }
   }
+  evalSuites.set(skillName, suite);
 }
 
 // compose-agent write-mode evals must keep pace with the 4.3.x authoring rules,
-// so the authoring path can't silently drift from the audit scoring path.
-const composeEvalsPath = 'skills/compose-agent/evals/evals.json';
-if (!files.has(composeEvalsPath)) {
+// so the authoring path can't silently drift from the audit scoring path. Checked
+// per eval CASE (not whole-file text), so the suite description can't satisfy them.
+const composeSuite = evalSuites.get('compose-agent');
+if (!composeSuite) {
   throw new Error('compose-agent must ship write-mode evals at skills/compose-agent/evals/evals.json');
 }
-const composeEvalsText = readFileSync(composeEvalsPath, 'utf8');
 for (const [label, needle] of [
-  ['cross-phase back-write', /onSizeChanged|onGloballyPositioned|cross-phase/],
-  ['Strong Skipping false lead', /Strong Skipping[\s\S]*remember|remember[\s\S]*Strong Skipping/],
+  ['cross-phase back-write', /onSizeChanged|onGloballyPositioned|onPlaced|cross-phase/],
+  ['Strong Skipping false lead', /Strong Skipping[\s\S]*memoiz|memoiz[\s\S]*Strong Skipping/i],
   ['snapshot self-invalidation', /mutableStateMapOf|mutableStateListOf|self-invalidation/],
 ]) {
-  if (!needle.test(composeEvalsText)) {
-    throw new Error(`compose-agent evals must cover the ${label} authoring rule`);
+  if (!composeSuite.evals.some((item) => needle.test(JSON.stringify(item)))) {
+    throw new Error(`compose-agent evals must include a case covering the ${label} authoring rule`);
   }
 }
 NODE

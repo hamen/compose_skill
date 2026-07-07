@@ -180,7 +180,7 @@ If the user needs any of the above, narrow the scope and say so.
 
 ## Acceptance Evals
 
-`evals/evals.json` holds write-mode acceptance cases — prompts that ask this skill to *write* Compose, plus the expectations the produced code must satisfy. They mirror the `jetpack-compose-audit` scoring rules (cross-phase back-writes, Strong Skipping false leads, snapshot self-invalidation, phase-correct reads, lifecycle-aware Flow collection) so the authoring path can't drift from the audit path. Run a model with this skill loaded against each prompt and check every expectation.
+`evals/evals.json` holds write-mode acceptance cases — prompts that ask this skill to *write* Compose, plus the expectations the produced code must satisfy. Cases 0–2 mirror the `jetpack-compose-audit` scoring rules 1:1 (cross-phase back-writes, Strong Skipping false leads, snapshot self-invalidation) — `bin/ci` keeps them in lockstep so the authoring path can't drift from the audit path; cases 3–4 add foundational phase-correct reads and lifecycle-aware Flow collection. Run a model with this skill loaded against each prompt and check every expectation.
 
 ## Primary Sources
 

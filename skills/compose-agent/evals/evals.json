@@ -1,6 +1,6 @@
 {
   "skill_name": "compose-agent",
-  "description": "Write-mode acceptance evals for compose-agent. Unlike jetpack-compose-audit's evals (which grade an audit of existing code), these grade code the skill is asked to WRITE. Cases 0-2 lock in the 4.3.x authoring rules the audit already enforces (cross-phase back-writes, Strong Skipping false leads, snapshot self-invalidation) so the authoring path can't drift from the scoring path; cases 3-4 cover foundational phase/lifecycle rules. Run a model with the skill loaded against each prompt and check the produced Compose satisfies every expectation.",
+  "description": "Write-mode acceptance evals for compose-agent. Unlike jetpack-compose-audit's evals (which grade an audit of existing code), these grade code the skill is asked to WRITE. Cases 0-2 are the write-mode mirror of jetpack-compose-audit/evals/evals.json cases 12-14 (cross-phase back-write, Strong Skipping false lead, snapshot self-invalidation) — same rules, opposite direction (write vs audit) — so the authoring path can't drift from the scoring path; cases 3-4 cover foundational phase/lifecycle rules that this skill enforces but the audit does not have dedicated cases for. Run a model with the skill loaded against each prompt and check the produced Compose satisfies every expectation.",
   "evals": [
     {
       "id": 0,
@@ -9,8 +9,8 @@
       "files": [],
       "expectations": [
         "Do not write the label's measured width from onSizeChanged / onGloballyPositioned / onPlaced into state that the value reads in composition (that is a cross-phase back-write: measure -> write -> recompose).",
-        "Solve it in the layout phase: a custom Layout, Modifier.layout { }, or SubcomposeLayout that places the value using the label's measured width.",
-        "If BoxWithConstraints / SubcomposeLayout appears, it is used only for parent constraints, never to read the sibling label's measured size.",
+        "Solve it in the layout phase: a custom Layout, Modifier.layout { }, or SubcomposeLayout that measures the label and places the value at label.width + 8dp — these are correct.",
+        "Do not use BoxWithConstraints as a substitute for measuring the sibling label: it exposes the parent's constraints, not a sibling's measured size.",
         "The value's horizontal offset is computed during measure/layout, not read from a composition-phase State."
       ]
     },
