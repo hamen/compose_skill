@@ -15,7 +15,7 @@ On Kotlin `2.0.20+` with Compose Compiler `1.5.4+`, **Strong Skipping Mode is on
 What still defeats skipping under SSM:
 
 1. **Fresh collection / fresh object literals in the call site.** `listOf(...)`, `mapOf(...)`, `MyUiModel(...)` built at the call site recompute a new identity on every recomposition. Structural equality may save you, but construction churn still costs.
-2. **Fresh non-lambda objects built in the composable body** — a `MyUiModel(...)` or wrapper allocated inline and passed down (an extension of 1). **Not lambdas:** SSM wraps every lambda passed to a composable in `remember`, *including ones with unstable captures*, so a plain callback does not defeat skipping — don't manually `remember` callbacks to "fix" recomposition (see *Lambdas In Composables* and *Optimizations That Do Nothing*). Manual remembering only matters SSM-off or on a `@DontMemoize` / `@NonSkippableComposable` path.
+2. **Fresh non-lambda objects built in the composable body** — a `MyUiModel(...)` or wrapper allocated inline and passed down (an extension of 1). **Not lambdas:** SSM wraps every lambda passed to a composable in `remember`, *including ones with unstable captures*, so a plain callback does not defeat skipping — don't manually `remember` callbacks to "fix" recomposition (see *Lambdas In Composables* and *Optimizations That Do Nothing*). Manual remembering only matters SSM-off or on a `@DontMemoize` path.
 3. **Broken `equals()` on parameters.** If a data class overrides `equals()` incorrectly or is a plain class without `equals`, skipping fails for the wrong reason.
 4. **Explicit `@NonSkippableComposable` / `@DontMemoize`** on hot paths.
 
@@ -93,7 +93,7 @@ Layout(content = { Text(label); Text(value) }) { (labelM, valueM), constraints -
 }
 ```
 
-If a child genuinely needs the parent's constraints, `BoxWithConstraints` / `SubcomposeLayout` is fine — that exposes *parent constraints*, not a sibling's measured size. Do not round-trip a measured size through composition-read state.
+Writing a measured size from a layout callback is only a problem when something reads it **in composition**. If the value is consumed *exclusively* in a later layout/draw pass (`Modifier.layout { }`, `Modifier.drawBehind { }`, `graphicsLayer { }`), the write stays downstream and there is no loop — no custom `Layout` needed. And if a child genuinely needs the parent's constraints, `BoxWithConstraints` / `SubcomposeLayout` is fine — that exposes *parent constraints*, not a sibling's measured size. Do not round-trip a measured size through composition-read state.
 
 **Mutating a snapshot collection in the composition body (composition-phase self-invalidation — not cross-phase).** A `mutableStateListOf` / `mutableStateMapOf` (or `toMutableStateList()` / `toMutableStateMap()`) mutated (`add`, `put`, `putAll`, `clear`, `[k] =`, `+=`) inside a `@Composable` body that also reads it invalidates the composition that produced it:
 
@@ -114,7 +114,7 @@ Mutate snapshot state from an event handler, `LaunchedEffect`, or a state holder
 These *look* like recomposition fixes but change nothing. Don't write them, and don't leave them behind as "optimized":
 
 - `remember(index) { isFirstRow(index) }` — a pure, cheap function of its own key. Same inputs, no skipping benefit; inline it. Only `remember` genuinely expensive work keyed on real inputs.
-- Wrapping a callback in `remember` to "stabilize" it **under Strong Skipping** — the compiler already auto-memoizes lambdas passed to composables, *including those with unstable captures*. That lever only matters SSM-off or on a `@DontMemoize` / `@NonSkippableComposable` path.
+- Wrapping a callback in `remember` to "stabilize" it **under Strong Skipping** — the compiler already auto-memoizes lambdas passed to composables, *including those with unstable captures*. That lever only matters SSM-off or on a `@DontMemoize` path.
 - Identity-caching a read-only derived map to preserve reference equality — `remember(keys)` on the inputs is enough and won't serve stale data.
 - Hoisting state up without stabilizing the values passed back down — a fresh unstable instance each recomposition still defeats skipping on the child.
 
@@ -163,7 +163,7 @@ With SSM on, Compose wraps **every lambda passed to a composable** in `remember`
 
 Two cases where manual remembering still matters:
 
-1. **Strong Skipping is off, or the lambda is on a `@DontMemoize` / `@NonSkippableComposable` path.** There the compiler does not wrap the lambda — `remember` it (and stabilize its captures) if a profiler shows identity-based churn.
+1. **Strong Skipping is off, or the lambda is on a `@DontMemoize` path.** There the compiler does not wrap the lambda — `remember` it (and stabilize its captures) if a profiler shows identity-based churn.
 2. **Expensive derivations inside lambdas.** If the lambda itself is cheap but allocates a large structure, that allocation happens on every call. Move the allocation outside.
 
 ## Expensive Work In Composition

@@ -171,7 +171,7 @@
         "Do not credit `remember(index) { index == 0 }` — it wraps a pure, cheap expression keyed on its own input and saves nothing.",
         "Do not list either pattern in Prioritized Fixes, and do not deduct for removing them.",
         "If recommending anything, cite runtime recomposition counts or compiler reports as proof rather than the presence of the pattern.",
-        "Note that the `remember`-the-callback advice only applies with Strong Skipping OFF or on `@NonSkippableComposable` / `@DontMemoize` paths."
+        "Note that the `remember`-the-callback advice only applies with Strong Skipping OFF or on a `@DontMemoize` path."
       ]
     },
     {
