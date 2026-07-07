@@ -1,6 +1,6 @@
 {
   "skill_name": "jetpack-compose-audit",
-  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x, plus Paging 3 in Compose list/load-state behavior added in 4.2.0 (cases 10-11), plus cross-phase back-write detection and the false-lead scoring guard added in 4.3.0 (cases 12-14; compose-agent gained matching authoring guidance in 4.3.1). These are the audit/review acceptance criteria the skill must preserve; the earlier cases also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
+  "description": "Acceptance evals for the API-hygiene, effect-correctness, cancellation, and state-boundary behavior introduced in 4.1.x, plus Paging 3 in Compose list/load-state behavior added in 4.2.0 (cases 10-11), plus cross-phase back-write detection and the false-lead scoring guard added in 4.3.0 (cases 12-14; compose-agent gained matching authoring guidance in 4.3.1, and a write-mode eval mirror in 4.4.0 — its cases 0-2 correspond to cases 12-14 here). These are the audit/review acceptance criteria the skill must preserve; the earlier cases also back compose-agent review behavior. Run a model against each prompt and check it satisfies every expectation.",
   "evals": [
     {
       "id": 0,

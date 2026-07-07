@@ -26,7 +26,7 @@ The same correction lands in `compose-agent/performance.md`: the *Strong Skippin
 
 ## Eval coverage
 
-The authoring rules share the audit acceptance evals (`jetpack-compose-audit/evals/evals.json` cases 12–14) — `compose-agent` mirrors the same rubric. A dedicated compose-agent *write-mode* eval harness is a tracked follow-up.
+The authoring rules share the audit acceptance evals (`jetpack-compose-audit/evals/evals.json` cases 12–14) — `compose-agent` mirrors the same rubric. A dedicated compose-agent *write-mode* eval harness was **delivered in 4.4.0** (`skills/compose-agent/evals/evals.json`, cases 0–2 mirror audit 12–14, CI-locked).
 
 ## Attribution
 

@@ -45,7 +45,7 @@
       "expectations": [
         "The per-frame progress is read in layout/draw (lambda modifier / graphicsLayer / drawBehind / layout) or passed as a () -> Float provider — not as a plain Float read in ProgressBar's composition.",
         "ProgressBar does not recompose on every frame of the scroll/animation.",
-        "State is hoisted to Parent (or a state holder), and any Animatable is held in remember and driven from a LaunchedEffect."
+        "State is hoisted to Parent (or a state holder); if the solution is animation-driven, any Animatable is held in remember and driven from a LaunchedEffect (a scroll-driven solution may instead read LazyListState in a lambda modifier)."
       ]
     },
     {
