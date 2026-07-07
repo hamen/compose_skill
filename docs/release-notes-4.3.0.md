@@ -24,13 +24,13 @@ A guard table in `scoring.md` Performance: plausible "recomposition fixes" that 
 - Identity/instance caches for read-only derived maps (use `remember(keys)`).
 - Layout modifiers on both the measured and the sibling row (the sibling still reads size in composition).
 - `assertRecompositionCount(Exactly(1))` forced on both rows when one correctly recomposes 0 times.
-- Under **Strong Skipping**, manually `remember`-ing a callback the compiler already auto-memoizes — that lever only applies SSM-off, on `@NonSkippableComposable` / `@DontMemoize` paths, or when the lambda captures an unstable value.
+- Under **Strong Skipping**, manually `remember`-ing a callback the compiler already auto-memoizes — that lever only applies SSM-off or on `@NonSkippableComposable` / `@DontMemoize` paths. (Historical note: 4.3.0 also listed "or when the lambda captures an unstable value" — **corrected in 4.3.1**; SSM memoizes lambdas even with unstable captures.)
 
 The guard verifies against runtime recomposition counts / compiler reports rather than the presence of a pattern.
 
 ## Evals
 
-`evals/evals.json` cases 12–14 lock in the new behavior: cross-phase layout→composition back-write (12), false leads that must not be credited or suggested under SSM (13), and composition-phase snapshot self-invalidation (14). Audit-only — `compose-agent` has no cross-phase / false-lead guidance yet (tracked as follow-up).
+`evals/evals.json` cases 12–14 lock in the new behavior: cross-phase layout→composition back-write (12), false leads that must not be credited or suggested under SSM (13), and composition-phase snapshot self-invalidation (14). Audit-only at 4.3.0; `compose-agent` gained matching authoring guidance in 4.3.1.
 
 ## Attribution
 

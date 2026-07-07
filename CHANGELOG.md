@@ -2,6 +2,17 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.3.1 — 2026-07-06
+
+**`compose-agent` authoring guidance for cross-phase back-writes + false leads, plus a suite-wide Strong Skipping correctness fix.**
+
+Follow-up to 4.3.0: the audit could catch these after the fact, but the authoring skill stayed silent while writing. Now `compose-agent` warns up front, closing the drift the 4.3.0 cross-review flagged.
+
+- **`compose-agent/performance.md`.** New **Never Back-Write Across Phases** section (layout→composition writes, cross-phase; snapshot-collection mutation in a `@Composable` body, composition-phase self-invalidation — with good/bad Kotlin) and an **Optimizations That Do Nothing** section (the false leads: `remember(index)` on pure fns, `remember`-ing an auto-memoized callback under Strong Skipping, identity caches for derived maps, hoisting without stabilizing captures). Grep triggers gain `onSizeChanged` / `onGloballyPositioned` / `onPlaced` and snapshot-collection mutation.
+- **`compose-agent/SKILL.md`.** New Core Instruction, review-checklist line, and Review Process step 4 now names cross-phase back-writes.
+- **`jetpack-compose-audit` Strong Skipping fix (correctness).** The 4.3.0 false-lead wording said manual callback `remember` could still matter "when the lambda captures an unstable value." Per the official [Strong Skipping docs](https://developer.android.com/develop/ui/compose/performance/stability/strongskipping), SSM memoizes lambdas **even with unstable captures**, so that carve-out could still bless the exact no-op the guard forbids. Removed suite-wide; the only remaining exception is SSM-off or a `@DontMemoize` / `@NonSkippableComposable` path.
+- **Versions.** `compose-agent` → `4.3.1`, `jetpack-compose-audit` → `4.3.1`.
+
 ### 4.3.0 — 2026-07-06
 
 **`jetpack-compose-audit` only — cross-phase back-write detection + false-lead guard.**
