@@ -1,6 +1,6 @@
 {
   "name": "compose-agent",
-  "version": "4.3.1",
+  "version": "4.3.2",
   "description": "Agent skill that helps AI coding assistants write modern Jetpack Compose: correct state, effects, performance-aware modifiers, Navigation 3, Paging 3 in Compose, coroutines on lifecycle, animations, UI tests, focus/keyboard navigation, Compose Multiplatform boundaries, Android launch resources, and idiomatic Kotlin. Targets the mistakes LLMs actually make in Compose code.",
   "author": {
     "name": "Ivan Morgillo"

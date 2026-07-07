@@ -2,6 +2,13 @@
 
 Full release history for the Compose Skill Suite. The newest release is summarised under **What's new** in the [README](./README.md).
 
+### 4.3.2 — 2026-07-07
+
+**Patch — one missed Strong Skipping caveat.**
+
+- **`jetpack-compose-audit/scoring.md`.** The 4.3.1 sweep removed `@NonSkippableComposable` from the lambda-memoization exceptions everywhere except one caveat sentence (it read "opt-out path", so the sweep's string match skipped it). Fixed: `@NonSkippableComposable` opts a *composable* out of skipping but does **not** disable lambda memoization — only `@DontMemoize` (or SSM-off) does. Now consistent across the file.
+- **Versions.** `compose-agent` → `4.3.2`, `jetpack-compose-audit` → `4.3.2` (kept in lockstep).
+
 ### 4.3.1 — 2026-07-06
 
 **`compose-agent` authoring guidance for cross-phase back-writes + false leads, plus a suite-wide Strong Skipping correctness fix.**

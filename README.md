@@ -13,9 +13,9 @@
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-111827">
 </p>
 
-**`compose-agent` 4.3.1 · 2026-07-06** — Authoring guidance so the coding-agent skill *warns while you write*: **Never Back-Write Across Phases** (layout callbacks / snapshot-collection mutation feeding composition) and **Optimizations That Do Nothing** (the false leads). The 4.3.0 audit catches these after the fact; 4.3.1 stops you writing them.
+**`compose-agent` 4.3.2 · 2026-07-07** — Authoring guidance so the coding-agent skill *warns while you write*: **Never Back-Write Across Phases** (layout callbacks / snapshot-collection mutation feeding composition) and **Optimizations That Do Nothing** (the false leads). The 4.3.0 audit catches these after the fact; 4.3.1 stops you writing them.
 
-**`jetpack-compose-audit` 4.3.1 · 2026-07-06** — Cross-phase back-write detection (axis 3: layout callbacks writing state read in composition), a related composition-phase self-invalidation check (snapshot collections mutated in a composable body), and a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0).
+**`jetpack-compose-audit` 4.3.2 · 2026-07-07** — Cross-phase back-write detection (axis 3: layout callbacks writing state read in composition), a related composition-phase self-invalidation check (snapshot collections mutated in a composable body), and a **False Leads** scoring guard so the auditor stops crediting no-op "recomposition fixes." Adapted from [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Apache-2.0).
 
 **Version 4.2.0 · 2026-06-17** — Paging 3 in Compose: new `paging.md` reference (LLM guardrails, not API tour), audit hooks under existing Performance/State categories, planning doc at [`docs/paging-skill-plan.md`](./docs/paging-skill-plan.md). Validated through multi-agent cross-review. Both skills ship as `4.2.0`.
 
@@ -30,6 +30,10 @@ Authored and cross-reviewed with every frontier model — Claude Opus 4.8, GPT-5
 ---
 
 ## What's new
+
+### 4.3.2 — 2026-07-07
+
+**Patch.** Fixed one Strong Skipping caveat in `jetpack-compose-audit/scoring.md` that the 4.3.1 sweep missed (its "opt-out path" wording dodged the string match): `@NonSkippableComposable` opts a composable out of *skipping* but does not disable *lambda memoization* — only `@DontMemoize` / SSM-off does. Both skills → `4.3.2`.
 
 ### 4.3.1 — 2026-07-06
 
